@@ -17,7 +17,7 @@ export class Explosion extends Unit {
     time: number;
     explosionTime: number;
 
-        
+
     constructor(props: UnitProperties, team: number, range: number, explosionTime = defaultExplosionTime) {
         super(props, team);
 
@@ -26,36 +26,38 @@ export class Explosion extends Unit {
         this.damageRange = range;
 
         this.r = range;
-        this.initR = this.r;  
-        this.explosionTime = explosionTime;            
-        this.time = explosionTime;            
+        this.initR = this.r;
+        this.explosionTime = explosionTime;
+        this.time = explosionTime;
 
     }
 
     _update(dt: any): void {
 
-
-        if (this.time < this.explosionTime*.5) {
+        let factor = 1;
+        if (this.time > this.explosionTime * .85) {
+            factor = -1;
             // final phase explode circle
-            for (var theta = 0; theta < 2 * Math.PI; theta += Math.PI / rand(5,10)) {
-                globalAddParticle(this.Position, this.r, this.color, 2*Math.cos(theta), 2*Math.sin(theta), globalParticleTime);
+            for (var theta = 0; theta < 2 * Math.PI; theta += Math.PI / rand(1, 5)) {
+                globalAddParticle(this.Position, this.r*.1, this.color, 1.5 * Math.cos(theta), 1.5 * Math.sin(theta), globalParticleTime);
                 this.r -= (this.initR - 2) / this.explosionTime;
-            }        
+            }
+        } 
+        // else {
+        //     for (var theta = 0; theta < 2 * Math.PI; theta += Math.PI / rand(1, 5)) {
+        //         globalAddParticle(this.Position, this.r*.1, rand(1)>.5?'#000':'#ff0', 1.5 * Math.cos(theta), 1.5 * Math.sin(theta), globalParticleTime);
+        //         this.r -= (this.initR*.5 - 2) / this.explosionTime;
+        //     }
 
-    
-        }
-
-        this.Size.scale(1.02);
-        // if (this.Size.length() > this.range)
-        //     this.destroy()
+        // }
 
 
         this.time--;
-        if (this.time < 0 )
+        if (this.time < 0)
             this.destroy();
 
-        this.r -= (this.initR - 2)/fireTime;
-        this.r = Math.max(5, this.r);        
+        this.r += factor * (this.initR - 2) / fireTime;
+        this.r = Math.max(5, this.r);
 
         super._update(dt);
     }
@@ -77,7 +79,7 @@ export class Explosion extends Unit {
     }
 
 
-    delParticle (i: any) {
+    delParticle(i: any) {
         globalParticles.splice(i, 1);
     }
 

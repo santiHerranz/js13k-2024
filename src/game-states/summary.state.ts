@@ -29,7 +29,7 @@ class SummaryState implements State {
   onUpdate(dt: number) {
     const xCenter = drawEngine.context.canvas.width / 2;
     drawEngine.drawText(GameConfig.title, 80, xCenter, 90);
-    drawEngine.drawText('Restart', 60, xCenter, 600, this.isStartSelected ? 'white' : 'gray');
+    drawEngine.drawText('Restart', 80, xCenter, 600, this.isStartSelected ? 'white' : 'gray');
     this.updateControls();
 
     if (controls.isEscape) {

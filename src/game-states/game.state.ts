@@ -168,12 +168,11 @@ class GameState implements State {
 
     this.canvas!.setAttribute(
       "style",
-      // "background-color: #000;" + 
       "background-color: #0E223A;" +
       "image-rendering: optimizeSpeed;" +
       "image-rendering: pixelated;" +
-      // "image-rendering: smooth;" +
-      // "image-rendering: -moz-crisp-edges;" +
+      "image-rendering: smooth;" +
+      "image-rendering: -moz-crisp-edges;" +
       ""
     );
 
@@ -292,30 +291,30 @@ class GameState implements State {
 
       // Test
       switch (1 + GameConfig.levelCurrentIndex) {
-        case 1:
-          GameConfig.enemySpawnTime = 1;
-          GameConfig.playerShootPattern = 0;
-          GameConfig.playerShootCoolDownValue = .2;
-          GameConfig.playerBulletSize = 10;
-          GameConfig.playerBulletDamagePoints = 30;
-          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
-          break;
-        case 2:
-          GameConfig.enemySpawnTime = .5;
-          GameConfig.playerShootPattern = 1;
-          GameConfig.playerShootCoolDownValue = .2;
-          GameConfig.playerBulletSize = 8;
-          GameConfig.playerBulletDamagePoints = 50;
-          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
-          break;
-        case 3:
-          GameConfig.enemySpawnTime = .3;
-          GameConfig.playerShootPattern = 2;
-          GameConfig.playerShootCoolDownValue = .1;
-          GameConfig.playerBulletSize = 10;
-          GameConfig.playerBulletDamagePoints = 50;
-          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
-          break;
+        // case 1:
+        //   GameConfig.enemySpawnTime = 1;
+        //   GameConfig.playerShootPattern = 0;
+        //   GameConfig.playerShootCoolDownValue = .2;
+        //   GameConfig.playerBulletSize = 10;
+        //   GameConfig.playerBulletDamagePoints = 30;
+        //   GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+        //   break;
+        // case 2:
+        //   GameConfig.enemySpawnTime = .5;
+        //   GameConfig.playerShootPattern = 1;
+        //   GameConfig.playerShootCoolDownValue = .2;
+        //   GameConfig.playerBulletSize = 8;
+        //   GameConfig.playerBulletDamagePoints = 50;
+        //   GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+        //   break;
+        // case 3:
+        //   GameConfig.enemySpawnTime = .3;
+        //   GameConfig.playerShootPattern = 2;
+        //   GameConfig.playerShootCoolDownValue = .1;
+        //   GameConfig.playerBulletSize = 10;
+        //   GameConfig.playerBulletDamagePoints = 50;
+        //   GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+        //   break;
 
         // case 3:
         //   GameConfig.enemySpawnTime = 1;
@@ -327,19 +326,25 @@ class GameState implements State {
         //   break;
 
         default:
+
           GameConfig.playerBulletType = BULLET_TYPE_BULLET;
-          GameConfig.playerSize = rand(30, 90);
-          GameConfig.playerBulletSize = rand(4, 12);
-          GameConfig.playerShootCoolDownValue = rand(.001, .1);
-          GameConfig.playerShootPattern = randInt(0, PLAYER_SHOOT_PATTERN_MODES.length);
-          GameConfig.playerShootSpreadAngle = Math.PI / 180 * randInt(10, 30);
+          GameConfig.playerSize = rand(30, 100);
+          GameConfig.playerBulletSize = rand(4, 15);
+          GameConfig.playerBulletSpeed = rand(10, 20);
+
+          GameConfig.playerShootPattern = randInt(0, PLAYER_SHOOT_PATTERN_MODES.length-1);
+
+          const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
+
+          GameConfig.playerShootCoolDownValue = currentMode.cooldown; // rand(.001, .1);
+          GameConfig.playerShootSpreadAngle = currentMode.spreadAngle ;  //randInt(10, 30);
           break;
       }
 
       // Apply changed properties for all
       this.units.forEach(unit => unit.setDynamicProperties());
 
-      this.gameLevelTimer.set(3); // every 5 seconds
+      this.gameLevelTimer.set(1); // every 5 seconds
     }
 
 
@@ -754,7 +759,7 @@ class GameState implements State {
 
     let currentHealthRatio = this.player!.healthPoints / this.player!.maxHealthPoints;
 
-    const healthBarProps = { x: drawEngine.canvasWidth * .2 - 200, y: 180, w: 400, h: 50 };
+    const healthBarProps = { x: drawEngine.canvasWidth * .2 - 200, y: 180, w: 400, h: 30 };
     drawEngine.drawRectangle(new Vector(healthBarProps.x, healthBarProps.y), new Vector(healthBarProps.w, healthBarProps.h), { fill: '#fff' });
     drawEngine.drawRectangle(new Vector(healthBarProps.x, healthBarProps.y), new Vector(healthBarProps.w * currentHealthRatio, healthBarProps.h), { fill: currentHealthRatio > .5 ? '#0f0' : '#f00' });
     // drawEngine.drawText('Health ' + this.player?.healthPoints.toFixed(0), 40, 18, 70, 'white', 'left');
@@ -1197,7 +1202,7 @@ class GameState implements State {
     };
 
     enemy.explode = (position: Vector) => {
-      let explosion = new Explosion({ position, size }, enemy.team, size.length() * 2);
+      let explosion = new Explosion({ position, size }, enemy.team, size.length() * 2, 3.5);
       explosion.damagePoints = GameConfig.enemyExplosionDamagePoints;
       explosion.Mass = 100;
       explosion.color = enemy.color;
@@ -1259,7 +1264,7 @@ class GameState implements State {
           let initOffset = new Vector(currentMode.origin[player.shotPhase] * player.Size.x);
 
 
-          bulletVelocity.rotate(currentMode.dest[player.shotPhase] * GameConfig.playerShootSpreadAngle);
+          bulletVelocity.rotate(currentMode.dest[player.shotPhase] * GameConfig.playerShootSpreadAngle); //   currentMode.spreadAngle GameConfig.playerShootSpreadAngle);
 
           let playerBullet = createBullet(player.weaponBulletType, player, bulletSize, bulletVelocity, initOffset, bulletTargetPosition);
 

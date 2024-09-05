@@ -1,5 +1,5 @@
 import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL } from "@/game/game-weapons";
-import { Timer } from "@/utils";
+import { PI, Timer } from "@/utils";
 import { scrollSpeed } from "./game.state";
 
 
@@ -7,13 +7,17 @@ export const colorShadow: string = 'rgb(10,10,10,0.2)';
 export const transparent: string = 'transparent'; 
 
 
-export const PLAYER_SHOOT_PATTERN_MODES: { origin: number[]; dest: number[]; cooldown: number; }[] = [
-  { origin: [0], dest: [0], cooldown: 1, }, // single straight bullet
-  { origin: [-1, 1], dest: [0, 0], cooldown: .05, }, // double straight bullet
-  { origin: [-1, 0, 1], dest: [0, 0, 0], cooldown: .01, },
-  { origin: [0, -1, 1], dest: [0, -1, 1], cooldown: .001, },
-  { origin: [-.5, 0, .5], dest: [-.5, 0, .5], cooldown: .001, },
-  { origin: [-1, 0, 1], dest: [-1, 0, 1], cooldown: .001, },
+export const PLAYER_SHOOT_PATTERN_MODES: { origin: number[]; dest: number[]; spreadAngle:number; cooldown: number; }[] = [
+  { origin: [0], dest: [0], spreadAngle: 0, cooldown: 1, }, // single straight bullet
+
+  { origin: [-1, 1], dest: [0, 0], spreadAngle: Math.PI/180*15, cooldown: .05, }, // double straight bullet
+
+  { origin: [-1, 0, 1], dest: [0, 0, 0], spreadAngle: 0, cooldown: .01, },
+  { origin: [0, -1, 1], dest: [0, -1, 1], spreadAngle: PI/180*10, cooldown: .001, },
+  { origin: [-.5, 0, .5], dest: [-.5, 0, .5], spreadAngle: PI/180*15, cooldown: .001, },
+  { origin: [-1, 0, 1], dest: [-1, 0, 1], spreadAngle: 0, cooldown: .001, },
+
+  { origin: [-1,-.3,-.6,0,.6,.3,1], dest: [-1,-.3,-.6,0,.6,.3,1], spreadAngle: PI/180*90, cooldown: 0, },
 ];
 
 
@@ -66,8 +70,8 @@ export const GameConfig = {
   
   // levelEnemyCount: [3, 5, 8, 15, 20, 35, 50, 19, 150, 240, 380, 620, 1000], // exponencial
   // levelEnemyCount: [5, 8, 15, 20, 35], // , 50, 19, 150, 240, 350],
-  levelEnemyCount: [5, 8, 15, 20, 100], // , 50, 19, 150, 240, 350],
-  levelCurrentIndex: 1,
+  levelEnemyCount: [100, 8, 15, 20, 100], // , 50, 19, 150, 240, 350],
+  levelCurrentIndex: 0,
 
   levelUnlocked: [1,2,3,4,5], //
 

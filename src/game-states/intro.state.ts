@@ -7,13 +7,12 @@ import { time } from "@/index";
 import { Button } from "@/core/button";
 import { sound } from "@/core/sound";
 import { SND_BTN_HOVER, SND_BTN_CLICK } from "@/game/game-sound";
-import { GameConfig } from "./game-config";
+import { debug, GameConfig } from "./game-config";
 import { controls } from "@/core/controls";
-import { summaryState } from "./summary.state";
 
 
 const xCenter = drawEngine.context.canvas.width / 2;
-const def = { w: 800, h: 120 };
+const def = { w: 400, h: 120 };
 
 class IntroState implements State {
 
@@ -45,25 +44,30 @@ class IntroState implements State {
         );
 
         // FOR DEBUG
+        // console.log(document.location.hash);
+        if (document.location.hash == '#debug') {
+            // debug.showWires = 1;
+
             this.timeout = setTimeout(() => {
-            // gameStateMachine.setState(gameState);
-            this.startGame(GameConfig.levelCurrentIndex);
-          }, 1000);
+                this.startGame(GameConfig.levelCurrentIndex);
+            }, 1000);
+        }
+
 
         this.count = 0;
 
         let btn;
 
         // ['Tutorial', 'First mission','Assault', 'Nuke', 'Last']
-        [1,2,3,4,5,6].map((level, index) => {
-            btn = new Button(xCenter, this.posY, def.w, def.h, 'Level '+ level, "", 100);
+        [1, 2, 3, 4, 5, 6].map((level, index) => {
+            btn = new Button(xCenter, this.posY, def.w, def.h, 'Level ' + level, "", 100);
             btn.enabled = GameConfig.levelUnlocked.length > index;
             btn.selected = true;
             btn.clickCB = () => {
                 this.startGame(index);
             };
             this.buttons.push(btn);
-    
+
         });
 
 
@@ -87,7 +91,7 @@ class IntroState implements State {
         this.buttons = [];
 
         clearTimeout(this.timeout);
-        this.timeout =  undefined;
+        this.timeout = undefined;
 
         // remove listeners
         inputMouse.removeAllEventListener();
@@ -118,43 +122,43 @@ class IntroState implements State {
     updateControls() {
 
         if ((controls.isUp && !controls.previousState.isUp)) {
-          
+
             this.selectedMenu -= 1;
             sound(SND_BTN_HOVER);
-          
+
         }
         if ((controls.isDown && !controls.previousState.isDown)) {
-          this.selectedMenu += 1;
-          sound(SND_BTN_HOVER);
+            this.selectedMenu += 1;
+            sound(SND_BTN_HOVER);
         }
         if (this.selectedMenu >= GameConfig.levelUnlocked.length)
-          this.selectedMenu = 0;
+            this.selectedMenu = 0;
         if (this.selectedMenu < 0)
-          this.selectedMenu =  GameConfig.levelUnlocked.length;
-    
-    
+            this.selectedMenu = GameConfig.levelUnlocked.length;
+
+
         if (controls.isConfirm && !controls.previousState.isConfirm) {
-    
-          this.buttons[this.selectedMenu].selected = true;
-    
-          this.startGame(this.selectedMenu);
+
+            this.buttons[this.selectedMenu].selected = true;
+
+            this.startGame(this.selectedMenu);
         }
-      }
+    }
 
 
     mouseDown() {
         if (inputMouse.pointer.leftButton) {
-    
-          this.buttons
-          .sort((a, b) => a.Position.y - b.Position.y < 0 ? -1 : 1)
-          .forEach((button, index) => { 
-            button.selected = button.mouseDownEvent(inputMouse.pointer.Position);
-            
-            if (button.selected)
-              this.selectedMenu = index;
-          });
+
+            this.buttons
+                .sort((a, b) => a.Position.y - b.Position.y < 0 ? -1 : 1)
+                .forEach((button, index) => {
+                    button.selected = button.mouseDownEvent(inputMouse.pointer.Position);
+
+                    if (button.selected)
+                        this.selectedMenu = index;
+                });
         }
-      };
+    };
 
 
     private startGame(levelIndex: number) {
@@ -203,20 +207,22 @@ class IntroState implements State {
         X = drawEngine.canvasWidth / 2 + .2 * (drawEngine.canvasWidth / 2 - inputMouse.pointer.Position.x);
         Y = drawEngine.canvasHeight / 2 + .2 * (drawEngine.canvasHeight / 2 - inputMouse.pointer.Position.y);
 
-        const tilt = drawEngine.canvasWidth/2 - X; // 100*Math.cos(time) ;
+        let tilt = drawEngine.canvasWidth / 2 - X; // 100*Math.cos(time) ;
 
-        const gradient = x.createLinearGradient(drawEngine.canvasWidth/2 + tilt, 0, drawEngine.canvasWidth/2 - tilt, drawEngine.canvasHeight);
 
-        let horit = .85 + .0001 * (drawEngine.canvasHeight/2 - Y);
+        const gradient = x.createLinearGradient(drawEngine.canvasWidth / 2 + tilt, 0, drawEngine.canvasWidth / 2 - tilt, drawEngine.canvasHeight);
 
-// Add three color stops
-gradient.addColorStop(0, "#1F3BA6");
-gradient.addColorStop(horit-0.35, "#3EAFDF");
-gradient.addColorStop(horit-.007, "#98F6D8");
-gradient.addColorStop(horit, "#fff");
-gradient.addColorStop(horit +.001, "#218DD1");
-gradient.addColorStop(1, "#218DD1");
-x.fillStyle = gradient;
+        let horit = .85 + .0001 * (drawEngine.canvasHeight / 2 - Y);
+        
+
+        // Add three color stops
+        gradient.addColorStop(0, "#1F3BA6");
+        gradient.addColorStop(horit - 0.35, "#3EAFDF");
+        gradient.addColorStop(horit - .007, "#98F6D8");
+        gradient.addColorStop(horit, "#fff");
+        gradient.addColorStop(horit + .001, "#218DD1");
+        gradient.addColorStop(1, "#218DD1");
+        x.fillStyle = gradient;
 
         // x.fillStyle = '#480fc8';
 
