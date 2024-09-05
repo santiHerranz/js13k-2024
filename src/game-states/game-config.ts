@@ -18,6 +18,9 @@ export const PLAYER_SHOOT_PATTERN_MODES: { origin: number[]; dest: number[]; coo
 
 
 export const GameConfig = {
+
+  title: 'NFZ13',
+  subtitle: 'No Flight Zone',
   
   playerUnits: 1,
 
@@ -62,10 +65,11 @@ export const GameConfig = {
   enemyPathPattern: 0,
   
   // levelEnemyCount: [3, 5, 8, 15, 20, 35, 50, 19, 150, 240, 380, 620, 1000], // exponencial
-  levelEnemyCount: [5, 8, 15, 20, 35], // , 50, 19, 150, 240, 350],
+  // levelEnemyCount: [5, 8, 15, 20, 35], // , 50, 19, 150, 240, 350],
+  levelEnemyCount: [5, 8, 15, 20, 100], // , 50, 19, 150, 240, 350],
   levelCurrentIndex: 1,
 
-  levelUnlocked: [1], //,2,3,4,5
+  levelUnlocked: [1,2,3,4,5], //
 
   
   coinSize: 30,

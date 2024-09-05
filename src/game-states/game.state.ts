@@ -49,10 +49,11 @@ export const scrollSpeed = new Vector(0, .2);
 
 
 const HINTS = [
-  "  HINT: USE ARROW KEYS TO MOVE.",
-  "  HINT: PRESS BACKSPACE TO UNDO.",
-  "  HINT: PRESS R TO RESTART.",
-  "  HINT: PRESS ENTER TO PAUSE."
+  "💀 DESTROY 70% EMENIES!",
+  // "  HINT: USE ARROW KEYS TO MOVE.",
+  // "  HINT: PRESS BACKSPACE TO UNDO.",
+  // "  HINT: PRESS R TO RESTART.",
+  // "  HINT: PRESS ENTER TO PAUSE."
 ];
 
 
@@ -727,9 +728,13 @@ class GameState implements State {
     // DRAW HEADER
 
     drawEngine.drawText('' + time.toFixed(2), 30, drawEngine.canvasWidth * .95, 40, 'white', 'right');
+
     // drawEngine.drawText('bullets:' + this.bullets.length, 30, drawEngine.canvasWidth * .95, 80, 'white', 'right');
     // drawEngine.drawText('' + dt.toFixed(2), 28, drawEngine.canvasWidth * .95, 40);
     drawEngine.drawText(`Level : ${1 + GameConfig.levelCurrentIndex} of ${GameConfig.levelEnemyCount.length}`, 50, 10, 50, 'white', 'left');
+
+    if (time < 10)
+      drawEngine.drawText(`${HINTS[0]}`, 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
     // drawEngine.drawText('coins:' + this.coins.length, 40, drawEngine.canvasWidth / 2, 150)
     // drawEngine.drawText('explo:' + this.explosions.length, 40, drawEngine.canvasWidth / 2, 200)
     // drawEngine.drawText('shakeForce:' + this.shakeForce, 40, drawEngine.canvasWidth / 2, 250)

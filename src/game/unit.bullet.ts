@@ -1,7 +1,7 @@
-import { drawEngine } from "@/core/draw-engine";
 import { Vector } from "@/core/vector";
 import { PI } from "@/utils";
 import { Unit } from "./unit";
+import { transparent } from "@/game-states/game-config";
 
 
 export class Bullet extends Unit {
@@ -58,12 +58,42 @@ export class Bullet extends Unit {
 
         super.draw(ctx);
 
-        drawEngine.drawCircle(this.Position.clone().add(new Vector(0, -this._z)), this.damageRange, { stroke: 'white', fill: this.color, lineWidth: 3 });
+        // drawEngine.drawCircle(this.Position.clone().add(new Vector(0, -this._z)), this.damageRange, { stroke: 'white', fill: transparent, lineWidth: 3 });
 
-        drawEngine.drawRectangle(this.Position.clone().add(new Vector(0-this.Radius, 0-this.Radius-this._z)), new Vector(this.Radius*2, this.Radius*2), { stroke: this.color, fill: this.color });
+        // drawEngine.drawRectangle(this.Position.clone().add(new Vector(0-this.Radius, 0-this.Radius-this._z)), new Vector(this.Radius*2, this.Radius*8), { stroke: this.color, fill: this.color });
+
+        const pos = this.Position.clone().add(new Vector(0-this.Radius, 0-this.Radius-this._z));
+        const siz = new Vector(this.Radius, this.Radius*8);
+
+        ctx.fillStyle = this.gradientUpp(ctx, siz, this.Velocity.y);
+    
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = transparent; 
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.rotate(this.Velocity.heading()+PI/2);
+        ctx.beginPath();
+        ctx.rect(0, 0, siz.x, siz.y);
+        ctx.closePath();
+    
+        ctx.fill();
+        ctx.restore();
 
     }
 
     explode(position: Vector) {}
+
+    gradientUpp(ctx: { createLinearGradient: (arg0: number, arg1: number, arg2: number, arg3: number) => any; }, size: Vector, velY: number = 0) {
+
+        const gradient = ctx.createLinearGradient(size.x/2, 0, size.x/2, size.y);
+    
+        let dir = [0,.4,.5,.6,1]; // velY < 0 ? [0,.8,1]:[1,.8,0]; 
+        // Add three color stops
+        gradient.addColorStop(dir[0], "#F5F6C5");
+        gradient.addColorStop(dir[1], '#CAA594');
+        gradient.addColorStop(dir[3], transparent); // '#B17FA3'
+        gradient.addColorStop(dir[4], transparent);
+        return gradient;
+    }
 
 }

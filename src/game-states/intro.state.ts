@@ -12,7 +12,8 @@ import { controls } from "@/core/controls";
 import { summaryState } from "./summary.state";
 
 
-const def = { w: 800, h: 180 };
+const xCenter = drawEngine.context.canvas.width / 2;
+const def = { w: 800, h: 120 };
 
 class IntroState implements State {
 
@@ -22,7 +23,6 @@ class IntroState implements State {
 
     buttons: Button[] = [];
     count: number = 0;
-    gameTitle: string = 'NO13';
 
     startCondition = false;
     timeout: NodeJS.Timeout | undefined;
@@ -44,22 +44,19 @@ class IntroState implements State {
             ""
         );
 
-
+        // FOR DEBUG
             this.timeout = setTimeout(() => {
             // gameStateMachine.setState(gameState);
             this.startGame(GameConfig.levelCurrentIndex);
-          }, 30 * 1000);
+          }, 1000);
 
         this.count = 0;
 
-
-        const refX = drawEngine.canvasWidth*.5;
-
         let btn;
 
- 
-        ['Tutorial', 'First mission','Assault', 'Nuke', 'Last'].map((level, index) => {
-            btn = new Button(refX, this.posY, def.w, def.h, level, "", 120);
+        // ['Tutorial', 'First mission','Assault', 'Nuke', 'Last']
+        [1,2,3,4,5,6].map((level, index) => {
+            btn = new Button(xCenter, this.posY, def.w, def.h, 'Level '+ level, "", 100);
             btn.enabled = GameConfig.levelUnlocked.length > index;
             btn.selected = true;
             btn.clickCB = () => {
@@ -102,6 +99,9 @@ class IntroState implements State {
         drawEngine.context.save();
         this.sceneAnimation(time);
         drawEngine.context.restore();
+
+        drawEngine.drawText(GameConfig.title, 250, xCenter, 450);
+        drawEngine.drawText(GameConfig.subtitle, 80, xCenter, 620);
 
 
         this.buttons.sort((a, b) => a.Position.y - b.Position.y < 0 ? -1 : 1).map(_ => _.selected = false);
@@ -186,7 +186,7 @@ class IntroState implements State {
         }
 
         // this.canvas!.setAttribute('style', 'background-color: ' + R(255, 255, 255, 1) + ';');
-        this.canvas!.setAttribute('style', 'background-color: #124875;'); // #188fa8  
+        this.canvas!.setAttribute('style', 'background-color: #fff;');  //#124875 // #188fa8  
 
         // canvas!.setAttribute('style', 'background-image: radial-gradient(gray 25%, yellow '+ (20*S(t/.50)).toFixed(0) +'%, white 40%);');
         //  canvas!.setAttribute('style', 'background: repeating-conic-gradient(gold, #fff 10deg);');
@@ -198,8 +198,28 @@ class IntroState implements State {
         // this.canvas!.setAttribute('style', 'background: conic-gradient(black 25%, white 0deg 50%, black 0deg 75%, white 0deg); background-size: 60px 60px;');
 
         // canvas!.setAttribute('style', 'background: repeating-conic-gradient(hsla(0,0%,100%,.2) 0deg 15deg, hsla(0,0%,100%,0) 0deg 30deg ) #333;');
+        let i, w, X, Y, j, r;
 
-        x.fillStyle = '#389fb8';
+        X = drawEngine.canvasWidth / 2 + .2 * (drawEngine.canvasWidth / 2 - inputMouse.pointer.Position.x);
+        Y = drawEngine.canvasHeight / 2 + .2 * (drawEngine.canvasHeight / 2 - inputMouse.pointer.Position.y);
+
+        const tilt = drawEngine.canvasWidth/2 - X; // 100*Math.cos(time) ;
+
+        const gradient = x.createLinearGradient(drawEngine.canvasWidth/2 + tilt, 0, drawEngine.canvasWidth/2 - tilt, drawEngine.canvasHeight);
+
+        let horit = .85 + .0001 * (drawEngine.canvasHeight/2 - Y);
+
+// Add three color stops
+gradient.addColorStop(0, "#1F3BA6");
+gradient.addColorStop(horit-0.35, "#3EAFDF");
+gradient.addColorStop(horit-.007, "#98F6D8");
+gradient.addColorStop(horit, "#fff");
+gradient.addColorStop(horit +.001, "#218DD1");
+gradient.addColorStop(1, "#218DD1");
+x.fillStyle = gradient;
+
+        // x.fillStyle = '#480fc8';
+
 
         // Option 1
         // let i, w, z;
@@ -211,18 +231,15 @@ class IntroState implements State {
         //   z=w*90/i;
 
         // Option 2 - Based on https://www.dwitter.net/d/31707
-        let i, w, X, Y, j, r;
         x.fillRect(0, 0, i = w = drawEngine.canvasWidth, drawEngine.canvasHeight);
 
-        x.fillStyle = '#48893e';
-        x.fillRect(0, drawEngine.canvasHeight*.8, drawEngine.canvasWidth, drawEngine.canvasHeight);
+        // x.fillStyle = '#48893e';
+        // x.fillRect(0, drawEngine.canvasHeight*.8, drawEngine.canvasWidth, drawEngine.canvasHeight);
 
         x.fillStyle = '#389fb8';
 
         // x.clearRect(0,0,i=w=drawEngine.canvasWidth,drawEngine.canvasHeight);
         // X=drawEngine.canvasWidth/2 + 300 * S(t/1)+C(t/2);Y=drawEngine.canvasHeight/2;
-        X = drawEngine.canvasWidth / 2 + .2 * (drawEngine.canvasWidth / 2 - inputMouse.pointer.Position.x);
-        Y = drawEngine.canvasHeight / 2 + .2 * (drawEngine.canvasHeight / 2 - inputMouse.pointer.Position.y);
 
         for (j = 5e3; r = j-- / (9 - ++t % 9); x.fillRect(j, 0, .2, 2e3))x.clearRect(C(j) * r + X!, S(j * j) * r + Y!, r >>= 8, r);
 

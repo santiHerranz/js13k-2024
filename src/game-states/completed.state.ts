@@ -47,7 +47,9 @@ class CompletedState implements State {
 
       // level increase
       GameConfig.levelCurrentIndex++;
-      GameConfig.levelUnlocked.push(1+GameConfig.levelCurrentIndex);
+      
+      if (!GameConfig.levelUnlocked.includes(1+GameConfig.levelCurrentIndex))
+        GameConfig.levelUnlocked.push(1+GameConfig.levelCurrentIndex);
 
       
       if (GameConfig.levelCurrentIndex >= GameConfig.levelEnemyCount.length) {

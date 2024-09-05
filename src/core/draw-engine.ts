@@ -1,5 +1,6 @@
 import { time } from "@/index";
 import { Vector } from "./vector";
+import { transparent } from "@/game-states/game-config";
 
 class DrawEngine {
 
@@ -20,7 +21,7 @@ class DrawEngine {
   drawText(text: string, fontSize: number, x: number, y: number, color = 'white', textAlign: 'center' | 'left' | 'right' = 'center') {
     const context = this.context;
 
-    context.font = `${fontSize}px Impact, sans-serif-black`;
+    context.font = `bold ${fontSize}px Impact, sans-serif-black`;
     context.textAlign = textAlign;
     context.strokeStyle = 'black';
     context.lineWidth = 8;

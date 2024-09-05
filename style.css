@@ -14,7 +14,7 @@ html, body {
     height: 100%;
 }
 
-@keyframes spin{
+/* @keyframes spin{
 	from{
         transform:rotate(0deg);
         transform:scale(100% 100%);
@@ -23,4 +23,4 @@ html, body {
         transform:rotate(360deg);
         transform:scale(110% 110%);
     }	
-}
+} */
