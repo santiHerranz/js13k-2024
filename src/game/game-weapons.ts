@@ -2,9 +2,8 @@ import { Vector } from '@/core/vector';
 import { Shooter as Shooter } from '@/game/unit.shooter';
 import { Bullet } from '@/game/unit.bullet';
 import { Fireball } from './unit-fireball';
-import { EntityType } from './EntityType';
 import { Unit } from './unit';
-
+import { rand } from '@/utils';
 
 export type BULLET_TYPE = 'bullet' | 'fireball';
 
@@ -19,8 +18,6 @@ export interface BulletProperties {
   position: Vector;
   size: Vector;
   team: number;
-  type: number;
-  owner: Unit | undefined;
   targetPosition: Vector;
   range: number;
 }
@@ -32,17 +29,18 @@ class BulletBuilder {
 }
 
 
-export function createBullet(bulleType: BULLET_TYPE, shooter: Shooter, bulletSize: Vector, velocity: Vector, targetPosition:Vector): Bullet {
+export function createBullet(bulleType: BULLET_TYPE, shooter: Shooter, bulletSize: Vector, velocity: Vector, startOffsetPosition:Vector, targetPosition:Vector): Bullet | Fireball {
 
-  let shootPosition = shooter.Position.clone().add(new Vector(1, 0).rotate(velocity.heading()).scale((shooter.Radius + bulletSize.length()) * 1.1 ));
+  // offset the bullet start position outside the boby shooter
+  let startPosition = shooter.Position.clone().add(new Vector(1, 0).rotate(velocity.heading()).scale((shooter.Radius + bulletSize.length()) * 1.1 ));
+
+  startPosition.add(startOffsetPosition);
 
   const props : BulletProperties = {
-    position: shootPosition, 
+    position: startPosition, 
     size: bulletSize, 
     team: shooter.team, 
-    type: EntityType.Arrow,
     range: shooter.damageRange, 
-    owner: shooter,
     targetPosition
   };
 
@@ -50,20 +48,18 @@ export function createBullet(bulleType: BULLET_TYPE, shooter: Shooter, bulletSiz
   // let bullet = new Fireball(props);
   let bullet: Bullet;
   
+  if (bulleType == BULLET_TYPE_BULLET)
     bullet= BulletBuilder.buildBullet(Bullet, props);
 
-  if (bulleType == BULLET_TYPE_FIREBALL)
+  else if (bulleType == BULLET_TYPE_FIREBALL)
     bullet = BulletBuilder.buildBullet(Fireball, props);
-
-  return createProjectile(bullet, shooter, bulletSize, velocity, targetPosition);
-}
-
-function createProjectile(bullet: Bullet, shooter: Shooter, bulletSize: Vector, velocity: Vector, targetPosition:Vector) {
+  else 
+    throw new Error(`Unknown bullet type: ${bulleType}`);
 
   bullet.Acceleration = velocity;
-  bullet._z = 0;
+  bullet._z = 100;
   bullet._zv = -4*4;
 
   return bullet;
-}
 
+}

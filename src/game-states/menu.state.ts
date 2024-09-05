@@ -8,12 +8,9 @@ import { inputMouse } from '@/core/input-mouse';
 import { summaryState } from './summary.state';
 import { sound } from '@/core/sound';
 import { SND_BTN_CLICK, SND_BTN_HOVER } from '@/game/game-sound';
-import { lerp } from '@/utils';
 import { time } from '@/index';
+import { introState } from './intro.state';
 
-
-let factor = 0;
-let currentFactor = 0;
 
 const def = {w:800, h: 200};
 
@@ -36,9 +33,9 @@ class MenuState implements State {
 
     this.count = 0;
 
-    setTimeout(() => {
-      gameStateMachine.setState(gameState);
-    }, 1000);
+    // setTimeout(() => {
+    //   gameStateMachine.setState(gameState);
+    // }, 1000);
 
     this.buttons = [];
 
@@ -94,9 +91,8 @@ class MenuState implements State {
 
   
   private startGame() {
-    factor = 10; //Math.PI*2/100;
     setTimeout(() => {
-      gameStateMachine.setState(gameState);
+      gameStateMachine.setState(introState);
     }, 1000);
   }
 
@@ -107,9 +103,6 @@ class MenuState implements State {
   }
 
   onUpdate(dt: number) {
-
-    currentFactor = lerp(currentFactor, factor, .01);
-
 
     drawEngine.context.save();
     this.u(time);

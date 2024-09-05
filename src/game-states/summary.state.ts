@@ -5,6 +5,7 @@ import { gameStateMachine } from '@/game-state-machine';
 import { gameState } from './game.state';
 import { menuState } from './menu.state';
 import { inputMouse } from '@/core/input-mouse';
+import { introState } from './intro.state';
 
 class SummaryState implements State {
   private isStartSelected = true;
@@ -13,7 +14,7 @@ class SummaryState implements State {
 
     setTimeout(() => {
       gameStateMachine.setState(gameState);
-    }, 1500);
+    }, 3000);
     
   }
 
@@ -31,7 +32,7 @@ class SummaryState implements State {
     this.updateControls();
 
     if (controls.isEscape) {
-      gameStateMachine.setState(menuState);
+      gameStateMachine.setState(introState);
     }
   }
 

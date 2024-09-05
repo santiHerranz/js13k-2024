@@ -49,6 +49,86 @@ const ASSERT = (value:boolean) => {};
 const clamp = (v: number, max = 1, min = 0) => (ASSERT(max > min), v < min ? min : v > max ? max : v);
 const percent = (v: number, max = 1, min = 0) => max - min ? clamp((v - min) / (max - min)) : 0;
 
+// Sin rebotes
+// export const debounce = <F extends (...args: Parameters<F>) => ReturnType<F>>(
+//   func: F,
+//   waitFor: number,
+// ) => {
+//   let timeout: NodeJS.Timeout;
+//   console.log('debounce - waitFor: ' + waitFor);
+
+//   const debounced = (...args: Parameters<F>) => {
+//     clearTimeout(timeout);
+//     timeout = setTimeout(() => func(...args), waitFor);
+//   };
+
+//   return debounced;
+// };
+
+// export const debounce = ( fn: (...params: any[]) => any, delay: number, context: any) => {
+//   let timer:  NodeJS.Timeout | undefined = undefined;
+//   return function (...args: any[]) {
+//     if (timer)
+//       clearTimeout(timer);
+//     timer = setTimeout(() => fn.apply(context, args), delay);
+//     return timer;
+//   };
+// };
+
+// export function debounce<T extends (...args: any[]) => void>(
+//   wait: number,
+//   callback: T,
+//   immediate = false,
+// )  {
+//   // This is a number in the browser and an object in Node.js,
+//   // so we'll use the ReturnType utility to cover both cases.
+//   let timeout: ReturnType<typeof setTimeout> | null;
+
+//   return function <U>(this: U, ...args: Parameters<typeof callback>) {
+//     const context = this;
+//     const later = () => {
+//       timeout = null;
+
+//       if (!immediate) {
+//         callback.apply(context, args);
+//       }
+//     };
+//     const callNow = immediate && !timeout;
+
+//     if (typeof timeout === "number") {
+//       clearTimeout(timeout);
+//     }
+
+//     timeout = setTimeout(later, wait);
+
+//     if (callNow) {
+//       callback.apply(context, args);
+//     }
+//   };
+// }
+
+
+export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
+  callback: T,
+  wait: number,
+  immediate?: boolean
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout | undefined;
+
+  return function (this: ThisParameterType<T>, ...args: Parameters<T>): void {
+    const later = () => {
+      timeout = undefined;
+      if (!immediate) callback.apply(this, args);
+    };
+
+    const callNow = immediate && timeout === undefined;
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+
+    if (callNow) callback.apply(this, args);
+  };
+}
+
 
 class Timer {
     time: number | undefined;

@@ -1,5 +1,7 @@
-import { soundWaitTime } from '@/game-states/game-config.js';
+import { Timer } from '@/utils.js';
 import zzfx from './zzfx.js';
+
+export const soundWaitTime: Timer = new Timer(1);
 
 export const sound = (s: (number | undefined)[]) => {
   // console.log('sound');

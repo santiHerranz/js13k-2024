@@ -8,12 +8,11 @@ import { inputMouse } from '@/core/input-mouse';
 import { globalParticles } from '@/game/game-particle';
 import { lerp, Timer } from '@/utils';
 import { colorShadow, debug, GameConfig, transparent } from './game-config';
-import { finishState } from './finish.state';
 import { introState } from './intro.state';
 
 const canvas: HTMLElement | null = document.getElementById('c2d');
 
-class CompletedState implements State {
+class FinishState implements State {
   private isStartSelected = true;
   spinTimer: Timer = new Timer(3);
   score: number = 0;
@@ -45,17 +44,7 @@ class CompletedState implements State {
 
     setTimeout(() => {
 
-      // level increase
-      GameConfig.levelCurrentIndex++;
-      GameConfig.levelUnlocked.push(1+GameConfig.levelCurrentIndex);
-
-      
-      if (GameConfig.levelCurrentIndex >= GameConfig.levelEnemyCount.length) {
-        gameStateMachine.setState(finishState);
-      }
-      else
-      gameStateMachine.setState(introState);
-      // gameStateMachine.setState(gameState);
+        gameStateMachine.setState(introState);
     }, 3000);
 
     // Carnival
@@ -65,6 +54,10 @@ class CompletedState implements State {
 
   }
 
+  onReset() {
+    GameConfig.levelUnlocked = [1];
+  }
+  
   onLeave() {
 
 
@@ -86,6 +79,8 @@ class CompletedState implements State {
     const yCenter = drawEngine.canvasHeight / 2;
 
     // drawEngine.drawText('acc: ' + this.currentAcc.toFixed(0), 80, xCenter, yCenter - 400);
+
+    drawEngine.drawText(`FINISH`, 400, xCenter, yCenter -300, this.isStartSelected ? 'white' : 'gray');
 
     drawEngine.drawText(`SCORE ${this.score}`, 200, xCenter, yCenter, this.isStartSelected ? 'white' : 'gray');
 
@@ -147,4 +142,4 @@ class CompletedState implements State {
   }
 }
 
-export const completedState = new CompletedState();
+export const finishState = new FinishState();

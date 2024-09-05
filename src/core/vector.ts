@@ -284,20 +284,17 @@ export class Vector {
       };
 
 
-    //   static distance(a: Vector, b: Vector) {
-    //     return Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
-    //   }
-
       static distance(a: Vector, b: Vector): number {
         return Math.sqrt(squaredDistance(a, b));
       }
-
 
       static rand() {
         return new Vector(rand(-1,1),rand(-1,1)      );
       }
 
-      
+      static createSize(length: number = 1) {
+        return new Vector(0,-1).scale(length);
+      }      
 }
 
 function squaredDistance(a: Vector, b: Vector): number {

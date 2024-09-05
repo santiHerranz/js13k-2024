@@ -2,14 +2,12 @@ import { drawEngine } from "@/core/draw-engine";
 import { Vector } from "@/core/vector";
 import { GameObject } from "@/game-object";
 import { debug, colorShadow } from "@/game-states/game-config";
-import { EntityType } from "./EntityType";
+import { time } from "@/index";
 
 export class Unit extends GameObject {
 
     showShadow: boolean = true;
-
-    type: number = EntityType.None;
-    
+   
     team: number;
     number: number;
 
@@ -27,7 +25,9 @@ export class Unit extends GameObject {
     path: Vector[] = [];
     currentPoint: number = 0;
 
-
+    public get healthRatio(): number {
+        return this._healthPoints/this._maxHealthPoints;
+    }
     public get maxHealthPoints(): number {
         return this._maxHealthPoints;
     }
@@ -46,10 +46,9 @@ export class Unit extends GameObject {
         // console.log('applyDamage: '+ this._healthPoints +' ' + value);
       }
 
-    constructor(position: Vector, size: Vector, team: number, type: number) {
-        super(position, size);
+    constructor(props: UnitProperties, team: number) {
+        super(props.position, props.size);
 
-        this.type = type;
         this.team = team;
         this.number = 0;       
 
@@ -59,6 +58,8 @@ export class Unit extends GameObject {
         this.damagePoints = 100;
         this.damageRange = this.Radius;
     }
+
+    setDynamicProperties() {};
 
 
     moveForce() { 
@@ -100,7 +101,7 @@ export class Unit extends GameObject {
 
     _update(dt: any): void {
         super._update(dt);
-        //this._z = -10 * Math.abs(Math.cos(time/300))
+        
 
     }
 
@@ -115,6 +116,16 @@ export class Unit extends GameObject {
     }
 
 
+}
+
+// interface Constructor<T> {
+//   new (...args: any[]): T;
+// }
+
+
+export interface UnitProperties {
+  position: Vector;
+  size: Vector;
 }
 
 

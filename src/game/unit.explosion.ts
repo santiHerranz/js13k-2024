@@ -1,14 +1,11 @@
 import { Vector } from "@/core/vector";
-import { EntityType as EntityType } from "./EntityType";
-import { Unit } from "./unit";
+import { Unit, UnitProperties } from "./unit";
 import { defaultExplosionTime, fireTime } from "./unit-fireball";
 import { globalAddParticle } from "./game-particle";
 import { rand } from "@/utils";
 import { globalParticleTime, globalParticles } from './game-particle';
 
 export class Explosion extends Unit {
-
-    owner: Unit | undefined;
 
     lastPos: Vector;
     range: number;
@@ -21,12 +18,10 @@ export class Explosion extends Unit {
     explosionTime: number;
 
         
-    constructor(position: Vector, size: Vector, team: number, range: number, owner: Unit, explosionTime = defaultExplosionTime) {
-        super(position, size, team, EntityType.Explosion);
+    constructor(props: UnitProperties, team: number, range: number, explosionTime = defaultExplosionTime) {
+        super(props, team);
 
-        this.owner = owner;
-
-        this.lastPos = position.clone();
+        this.lastPos = props.position.clone();
         this.range = range;
         this.damageRange = range;
 

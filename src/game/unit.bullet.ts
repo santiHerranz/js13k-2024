@@ -6,8 +6,6 @@ import { Unit } from "./unit";
 
 export class Bullet extends Unit {
 
-    owner: Unit | undefined;
-
     startPosition: Vector;
     lastPosition: Vector;
     targetPosition: Vector;
@@ -17,13 +15,12 @@ export class Bullet extends Unit {
 
     color: string = '#fff';
 
-    // constructor(position: Vector, size: Vector, team: number, range: number, owner: Unit | undefined, targetPosition:Vector, type: number = EntityType.Arrow) {
-        constructor(props: { position: Vector; size: Vector; team: number; type: number; range: number; owner: Unit | undefined; targetPosition: Vector;}) {
+        constructor(props: { position: Vector; size: Vector; team: number; type: number; range: number; targetPosition: Vector;}) {
 
 
-        super(props.position, props.size, props.team, props.type);
+        super(props, props.team);
 
-        this.owner = props.owner;
+        this.type = 'bullet';
 
         this.startPosition = props.position.clone();
         this.lastPosition = props.position.clone();
@@ -59,21 +56,12 @@ export class Bullet extends Unit {
 
     draw(ctx: CanvasRenderingContext2D) {
 
+        super.draw(ctx);
 
-        const thisPosition = this.Position.clone().add(new Vector(this.Radius, this.Radius).scale(.5));
-
-        // drawEngine.drawCircle(thisPosition.add(new Vector(0, -this._z)), this.Radius, { stroke: this.color, fill: this.color, lineWidth: 3 });
-
-
-         let offset = 0; //-this.Radius*3
-        // // if (this.Velocity.y > 0)
-        // //     offset = this.Radius*4
-
+        drawEngine.drawCircle(this.Position.clone().add(new Vector(0, -this._z)), this.damageRange, { stroke: 'white', fill: this.color, lineWidth: 3 });
 
         drawEngine.drawRectangle(this.Position.clone().add(new Vector(0-this.Radius, 0-this.Radius-this._z)), new Vector(this.Radius*2, this.Radius*2), { stroke: this.color, fill: this.color });
 
-
-        super.draw(ctx);
     }
 
     explode(position: Vector) {}

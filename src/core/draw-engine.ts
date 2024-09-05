@@ -89,18 +89,18 @@ class DrawEngine {
     ctx.fill();
   }
 
-  // drawQuadtree(node: any, ctx: CanvasRenderingContext2D) {
-  //   //no subnodes? draw the current node
-  //   if (node.nodes.length === 0) {
-  //     ctx.strokeStyle = `rgba(127,255,212,0.25)`;
-  //     ctx.strokeRect(node.bounds.x, node.bounds.y, node.bounds.width, node.bounds.height);
-  //     //has subnodes? drawQuadtree them!
-  //   } else {
-  //     for (let i = 0; i < node.nodes.length; i = i + 1) {
-  //       this.drawQuadtree(node.nodes[i], ctx);
-  //     }
-  //   }
-  // }
+  drawQuadtree(node: any, ctx: CanvasRenderingContext2D) {
+    //no subnodes? draw the current node
+    if (node.nodes.length === 0) {
+      ctx.strokeStyle = `rgba(127,255,212,0.25)`;
+      ctx.strokeRect(node.bounds.x, node.bounds.y, node.bounds.width, node.bounds.height);
+      //has subnodes? drawQuadtree them!
+    } else {
+      for (let i = 0; i < node.nodes.length; i = i + 1) {
+        this.drawQuadtree(node.nodes[i], ctx);
+      }
+    }
+  }
 
   drawBar(position: Vector, size: Vector, offsetY: number = 0, valueToShow: number = 100, valueMax: number = 100, color: string = '#0f0', condition: boolean = true, lineWidth: number = 6) {
     const ctx = this.context;
@@ -128,6 +128,7 @@ class DrawEngine {
         ctx.closePath();
 
         ctx.stroke();
+
     }
 }
 

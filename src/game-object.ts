@@ -2,9 +2,14 @@ import { drawEngine } from "@/core/draw-engine";
 import { Vector } from "@/core/vector";
 import { Circle } from "@/quadtree/Circle";
 import { Indexable, NodeGeometry } from "@/quadtree/types";
-import { colorShadow, debug } from './game-states/game-config';
+import { colorShadow, debug, transparent } from './game-states/game-config';
+
+const excludeVerbose = ['bullet'];
 
 export class GameObject implements Indexable {
+
+    type: string;
+    name: string;
 
     Active: boolean = true;
     Visible: boolean = true;
@@ -42,6 +47,9 @@ export class GameObject implements Indexable {
 
     constructor(position: Vector, size: Vector) {
 
+        this.type = 'obj';
+        this.name = Math.random().toString(36).substr(2, 5);
+
         this.Position = position.clone();
         this.Size = size.clone();
         this.Velocity = new Vector(0, 0);
@@ -54,8 +62,8 @@ export class GameObject implements Indexable {
 
     qtIndex(node: NodeGeometry) {
         return Circle.prototype.qtIndex.call({
-            x: this.Position.x,
-            y: this.Position.y,
+            x: this.HitBox.Position.x,
+            y: this.HitBox.Position.y,
             r: this.Radius,
         }, node);
     }
@@ -69,6 +77,14 @@ export class GameObject implements Indexable {
         this.Size = new Vector(side, side);
     }
 
+    get HitBox() {
+        const Size = this.Size.clone().scale(2);
+        const Position = this.Position.clone();
+        Position.add(Vector.createSize(this._z));
+        Position.add(new Vector(Size.x/2, Size.y/2).scale(-1));
+        // Position.add(Size);
+        return {Position, Size}; //
+    }
 
     _update(dt: number) {
 
@@ -91,13 +107,18 @@ export class GameObject implements Indexable {
         // shadow
         // this.showShadow && drawEngine.drawCircle(thisPosition.clone().add(GameObject.offsetShadow), this.Radius , { stroke: colorShadow, fill: colorShadow, lineWidth: 3 });
 
-        debug.showWires && drawEngine.drawCircle(this.Position.clone().add(new Vector(0,-this._z)), this.Radius, {stroke: '#fff', fill: 'transparent', lineWidth: 2}); // this.Size.length()
-        debug.showVelocity && drawEngine.drawLine(this.Position, this.Position.clone().add(this.Velocity.clone().normalize().multiplyByScalar(this.Size.length())));
+        // debug.showWires && drawEngine.drawCircle(this.Position.clone().add(new Vector(0,-this._z)), this.Radius, {stroke: '#fff', fill: 'transparent', lineWidth: 2}); // this.Size.length()
+        // debug.showVelocity && drawEngine.drawLine(this.Position, this.Position.clone().add(this.Velocity.clone().normalize().multiplyByScalar(this.Size.length())));
 
-      
+        debug.showWires && drawEngine.drawCircle(this.HitBox.Position.add(new Vector(this.HitBox.Size.x/2, this.HitBox.Size.y/2)), this.HitBox.Size.x/2, {stroke: 'red', fill: transparent});
+        debug.showWires && drawEngine.drawRectangle(this.HitBox.Position, this.HitBox.Size, {stroke: 'red', fill: transparent});
     }
 
     destroy() {
+
+        // if (!excludeVerbose.includes(this.type))
+        //     console.log(`destroy: ${this.type} - ${this.name}`);
+
         this.Active = false;
     }
 

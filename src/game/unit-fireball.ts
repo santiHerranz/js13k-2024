@@ -19,8 +19,7 @@ export class Fireball extends Bullet {
     time: number;
 
 
-    // constructor(position: Vector, size: Vector, team: number, range: number, owner: Unit | undefined, targetPosition:Vector, type: number = EntityType.Arrow) {
-        constructor(props: { position: Vector; size: Vector; team: number; range: number; owner: Unit | undefined; targetPosition: Vector; type: number }) {
+        constructor(props: { position: Vector; size: Vector; team: number; range: number; targetPosition: Vector; type: number }) {
 
         super(props);
 

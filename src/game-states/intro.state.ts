@@ -7,9 +7,12 @@ import { time } from "@/index";
 import { Button } from "@/core/button";
 import { sound } from "@/core/sound";
 import { SND_BTN_HOVER, SND_BTN_CLICK } from "@/game/game-sound";
+import { GameConfig } from "./game-config";
+import { controls } from "@/core/controls";
+import { summaryState } from "./summary.state";
 
 
-const def = { w: 800, h: 200 };
+const def = { w: 800, h: 180 };
 
 class IntroState implements State {
 
@@ -22,9 +25,10 @@ class IntroState implements State {
     gameTitle: string = 'NO13';
 
     startCondition = false;
+    timeout: NodeJS.Timeout | undefined;
 
     private get posY() {
-        return drawEngine.canvasHeight * .5 + this.count++ * def.h * 1.2;;
+        return drawEngine.canvasHeight * .4 + this.count++ * def.h * 1.2;;
     }
 
     onEnter() {
@@ -41,25 +45,25 @@ class IntroState implements State {
         );
 
 
-            setTimeout(() => {
-            gameStateMachine.setState(gameState);
-          }, 1000);
+            this.timeout = setTimeout(() => {
+            // gameStateMachine.setState(gameState);
+            this.startGame(GameConfig.levelCurrentIndex);
+          }, 30 * 1000);
 
         this.count = 0;
 
 
-        const refX = drawEngine.canvasWidth / 2;
+        const refX = drawEngine.canvasWidth*.5;
 
         let btn;
 
-        const unlocked = [1];
-
-        [1,2,3].map((level) => {
-            btn = new Button(refX, this.posY, def.w, def.h, "Level "+ level, "", 120);
-            btn.enabled = unlocked.includes(level);
+ 
+        ['Tutorial', 'First mission','Assault', 'Nuke', 'Last'].map((level, index) => {
+            btn = new Button(refX, this.posY, def.w, def.h, level, "", 120);
+            btn.enabled = GameConfig.levelUnlocked.length > index;
             btn.selected = true;
             btn.clickCB = () => {
-                this.startGame(level);
+                this.startGame(index);
             };
             this.buttons.push(btn);
     
@@ -80,9 +84,13 @@ class IntroState implements State {
         inputMouse.addEventListener('mousedown', () => this.mouseDown());
 
     }
+
     onLeave(dt: number) {
 
         this.buttons = [];
+
+        clearTimeout(this.timeout);
+        this.timeout =  undefined;
 
         // remove listeners
         inputMouse.removeAllEventListener();
@@ -104,8 +112,34 @@ class IntroState implements State {
             button._draw(drawEngine.context);
         });
 
-
+        this.updateControls();
     }
+
+    updateControls() {
+
+        if ((controls.isUp && !controls.previousState.isUp)) {
+          
+            this.selectedMenu -= 1;
+            sound(SND_BTN_HOVER);
+          
+        }
+        if ((controls.isDown && !controls.previousState.isDown)) {
+          this.selectedMenu += 1;
+          sound(SND_BTN_HOVER);
+        }
+        if (this.selectedMenu >= GameConfig.levelUnlocked.length)
+          this.selectedMenu = 0;
+        if (this.selectedMenu < 0)
+          this.selectedMenu =  GameConfig.levelUnlocked.length;
+    
+    
+        if (controls.isConfirm && !controls.previousState.isConfirm) {
+    
+          this.buttons[this.selectedMenu].selected = true;
+    
+          this.startGame(this.selectedMenu);
+        }
+      }
 
 
     mouseDown() {
@@ -123,7 +157,9 @@ class IntroState implements State {
       };
 
 
-    private startGame(level: number) {
+    private startGame(levelIndex: number) {
+
+        GameConfig.levelCurrentIndex = levelIndex;
 
         setTimeout(() => {
             gameStateMachine.setState(gameState);
@@ -150,7 +186,7 @@ class IntroState implements State {
         }
 
         // this.canvas!.setAttribute('style', 'background-color: ' + R(255, 255, 255, 1) + ';');
-        this.canvas!.setAttribute('style', 'background-color: #188fa8;');
+        this.canvas!.setAttribute('style', 'background-color: #124875;'); // #188fa8  
 
         // canvas!.setAttribute('style', 'background-image: radial-gradient(gray 25%, yellow '+ (20*S(t/.50)).toFixed(0) +'%, white 40%);');
         //  canvas!.setAttribute('style', 'background: repeating-conic-gradient(gold, #fff 10deg);');

@@ -11,13 +11,13 @@ import { Line } from '@/quadtree/Line';
 import { Indexable } from '@/quadtree/types';
 import { Vector } from '@/core/vector';
 import { manageUnitsCollision as manageUnitCollision } from '@/collisionManager';
-import { PI, rand, Timer } from '@/utils';
+import { debounce, PI, rand, randInt, Timer } from '@/utils';
 import { inputMouse } from '@/core/input-mouse';
 import { Unit } from '@/game/unit';
 import { GameObject } from '@/game-object';
-import { EntityType } from '@/game/EntityType';
 import { Shooter } from '@/game/unit.shooter';
-import { BULLET_TYPE_BULLET as BULLET_TYPE_BALL, BULLET_TYPE_FIREBALL, createBullet } from '@/game/game-weapons';
+import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL, createBullet } from '@/game/game-weapons';
+import { PLAYER_SHOOT_PATTERN_MODES } from './game-config';
 import { Bullet } from '@/game/unit.bullet';
 import { Explosion } from '@/game/unit.explosion';
 import { summaryState } from './summary.state';
@@ -26,19 +26,26 @@ import { sound } from '@/core/sound';
 import { SND_ARROW_SHOOT, SND_BIG_EXPLOSION, SND_COIN, SND_DEATH, SND_EXPLOSION, SND_HIGHSCORE, SND_TICTAC } from '@/game/game-sound';
 import { GameMap, GameMapTheme } from '@/game/game-map';
 import { defaultExplosionTime, Fireball } from '@/game/unit-fireball';
-import { Coin, CoinGreen, COIN_TYPE, COIN_TYPE_YELLOW, createCoin, CoinRed, CoinBlue, CoinYellow, COIN_TYPE_GREEN } from '@/game/game-coin';
+import { Coin, COIN_YELLOW, COIN_RED, COIN_BLUE, COIN_TOUCHED } from '@/game/game-coin';
 import { time } from '@/index';
 import { globalParticles } from '@/game/game-particle';
 import { completedState } from './completed.state';
+import { Collector } from '@/game/game-collector';
+import { Label } from '@/game/game-label';
+import { CollectibleFactory } from '@/game/game-collectible';
+import { Bomb } from '@/game/game.bomb';
+import { introState } from './intro.state';
 
 let magicOffset = 100;
 
 let nIntervId: NodeJS.Timer | null;
 
-export const TEAM_A = 1;
-export const TEAM_B = 2;
+export type TEAM = 1 | 2;
 
-export const scrollSpeed = new Vector(0, .25);
+export const TEAM_A: TEAM = 1;
+export const TEAM_B: TEAM = 2;
+
+export const scrollSpeed = new Vector(0, .2);
 
 
 const HINTS = [
@@ -48,10 +55,10 @@ const HINTS = [
   "  HINT: PRESS ENTER TO PAUSE."
 ];
 
-const LEVEL_DATA = [
-  [],
-];
 
+const ENEMY_PATH = [
+  [new Vector(100, 300), new Vector(100, 1200), new Vector(1000, 1200), new Vector(1000, 300)],
+];
 
 class GameState implements State {
 
@@ -67,13 +74,10 @@ class GameState implements State {
   bullets: Bullet[] = [];
   coins: Coin[] = [];
   explosions: Explosion[] = [];
+  labels: Label[] = [];
 
-  collectorYellow: Coin | undefined;
-  collectorRed: Coin | undefined;
-  collectorBlue: Coin | undefined;
-  collectorGreen: Coin | undefined;
-
-  collector: CoinGreen[] = [];
+  collectors: Collector[] = [];
+  collectorCoin: Collector | undefined;
 
   // Map
   gameMap: GameMap;
@@ -81,7 +85,6 @@ class GameState implements State {
 
   playerAlive: boolean;
 
-  level: number = 1;
   score: number;
 
   shakeForce: number = 0;
@@ -96,10 +99,11 @@ class GameState implements State {
   enemySpawnTimer: Timer = new Timer(undefined);
 
   gameLevelTimer: Timer = new Timer(undefined);
-  stats!: { enemiesCreated: number, kills: number, killsGoal: number };
   shootSoundColdDownTimer: Timer = new Timer(1);
   winCondition: boolean = false;
   enemyList: any;
+
+  stats = { enemiesCreated: 0, kills: 0, killsGoal: 0, maxScoreAvailable: 0 };
 
 
   constructor() {
@@ -155,58 +159,89 @@ class GameState implements State {
     return this.units.filter(f => f.team == TEAM_B);
   }
 
+  private getTeamBullets(team: TEAM) {
+    return this.bullets.filter(f => f.team == team);
+  }
 
   onEnter() {
 
     this.canvas!.setAttribute(
-      "style", 
+      "style",
       // "background-color: #000;" + 
-      "background-color: #0E223A;" + 
-      "image-rendering: optimizeSpeed;" + 
+      "background-color: #0E223A;" +
+      "image-rendering: optimizeSpeed;" +
       "image-rendering: pixelated;" +
       // "image-rendering: smooth;" +
       // "image-rendering: -moz-crisp-edges;" +
       ""
-    );    
+    );
 
     this.winCondition = false;
 
     this.shakeForce = 0;
 
-
+    // empty arrays
     this.units = [];
     this.bullets = [];
     this.coins = [];
     this.explosions = [];
     this.enemyList = [];
+    this.labels = [];
 
-    this.createEnemyValues(10);
+    // reset score
+    this.score = 0;
 
+    // reset stats
     this.stats = {
-      enemiesCreated:0,
+      enemiesCreated: 0,
       kills: 0,
-      killsGoal: this.enemyList.length * .8,
+      killsGoal: 0, // * .8,
+      maxScoreAvailable: 0,
     };
 
 
-    let coinSize = new Vector(GameConfig.coinSize, GameConfig.coinSize);
-    // this.collectorGreen = new CoinGreen({position: new Vector(drawEngine.canvasWidth * 1/5, drawEngine.canvasHeight * .98), size: coinSize});
-    // this.collectorBlue = new CoinBlue({position: new Vector(drawEngine.canvasWidth * 2/5, drawEngine.canvasHeight * .98), size: coinSize});
-    // this.collectorRed = new CoinRed({position: new Vector(drawEngine.canvasWidth * 3/5, drawEngine.canvasHeight * .98), size: coinSize});
-    this.collectorYellow = new CoinYellow({ position: new Vector(drawEngine.canvasWidth * .90, drawEngine.canvasHeight * .18), size: coinSize.clone().scale(2) });
-    this.collectorYellow.showBall = false;
-    this.collectorYellow.showShadow = false;
-    // this.collectorYellow.showNumber = true;
-    this.collector.push(this.collectorYellow); // , this.collectorRed, this.collectorBlue, this.collectorGreen
+    // let data = this.createEnemyValues(GameConfig.levelCurrentValue);
+    let data = this.createEnemyCount(GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex]);
+
+
+    this.enemyList = data.list;
+
+    // Kill 100% of enemies created
+    this.stats.killsGoal = data.list.length;
+
+    // Score max coin value created
+    this.stats.maxScoreAvailable = data.maxScoreAvailable;
 
     let hw = drawEngine.canvasWidth / 2;
     let hh = drawEngine.canvasHeight / 2;
 
-    const startPosition = new Vector(hw, hh + hh * .8);
+    let coinSize = new Vector(GameConfig.coinSize, GameConfig.coinSize);
+    this.collectorCoin = CollectibleFactory.createCollectible(COIN_RED, { position: new Vector(hw, 330), size: coinSize.clone().scale(1.5) });
+    this.collectors = [];
+    this.collectors.push(this.collectorCoin);
+
+
+    const startPosition = new Vector(hw, hh + hh * .6);
     this.player = this.createPlayer(startPosition);
 
-    this.enemySpawnTimer.set(3);
-    this.gameLevelTimer.set(10);
+    this.enemySpawnTimer.set(GameConfig.enemySpawnTime);
+    this.gameLevelTimer.set(0);
+
+
+    if (GameConfig.levelCurrentIndex == 0) {
+      const coinIntroList =
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+      // [1,2,3,4,5,6,7,8,9,10,11,12];
+
+      coinIntroList
+        .forEach((n, index) => {
+          let coin = CollectibleFactory.createCollectible(COIN_YELLOW, { position: startPosition.clone().add(Vector.createSize(300).rotate(index * 1 / coinIntroList.length * 360 * Math.PI / 180)), size: Vector.createSize(GameConfig.coinSize) });
+          coin.number = n;
+          this.coins.push(coin);
+        });
+
+    }
+
 
     // Player movement dragging mouse o finger touch
     inputMouse.addEventListener('mousedown', () => this.mouseDown());
@@ -225,7 +260,7 @@ class GameState implements State {
 
   private winConditionCriteria() {
     // return this.collectorYellow!.number > 100;
-    return this.stats.kills > this.stats.killsGoal;
+    return this.stats.kills >= this.stats.killsGoal;
   }
 
 
@@ -233,29 +268,77 @@ class GameState implements State {
 
     if (!this.winCondition && this.winConditionCriteria()) {
       this.winCondition = true;
+
+      // Score the rest
+      this.score += this.collectorCoin!.number;
+      this.collectorCoin!.number = 0;
+
       setTimeout(() => {
         sound(SND_HIGHSCORE);
 
-        completedState.Score = this.collectorYellow!.number;
+        completedState.score = this.score;
+        completedState.maxScore = this.stats.maxScoreAvailable;
 
-       gameStateMachine.setState(completedState);
-     }, 2000);
+        gameStateMachine.setState(completedState);
+      }, 5000);
 
     }
 
+    ////////////////////////////////
+    // LEVEL DIFICULTY DINAMIC CONTROL
 
-    // LEVEL DIFICULTY CONTROL
     if (this.gameLevelTimer.elapsed()) {
 
-      // if (this.level == 1 && this.score > 100)
-      //   this.level++;
+      // Test
+      switch (1 + GameConfig.levelCurrentIndex) {
+        case 1:
+          GameConfig.enemySpawnTime = 1;
+          GameConfig.playerShootPattern = 0;
+          GameConfig.playerShootCoolDownValue = .2;
+          GameConfig.playerBulletSize = 10;
+          GameConfig.playerBulletDamagePoints = 30;
+          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+          break;
+        case 2:
+          GameConfig.enemySpawnTime = .5;
+          GameConfig.playerShootPattern = 1;
+          GameConfig.playerShootCoolDownValue = .2;
+          GameConfig.playerBulletSize = 8;
+          GameConfig.playerBulletDamagePoints = 50;
+          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+          break;
+        case 3:
+          GameConfig.enemySpawnTime = .3;
+          GameConfig.playerShootPattern = 2;
+          GameConfig.playerShootCoolDownValue = .1;
+          GameConfig.playerBulletSize = 10;
+          GameConfig.playerBulletDamagePoints = 50;
+          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+          break;
 
-      if (this.stats.kills > 5)
-        GameConfig.levelEnemyMaxCount *= 1.2;
+        // case 3:
+        //   GameConfig.enemySpawnTime = 1;
+        //   GameConfig.playerShootPattern = 0;
+        //   GameConfig.playerShootCoolDownValue = 2;
+        //   GameConfig.playerBulletSize = 20;
+        //   GameConfig.playerBulletDamagePoints = 200;
+        //   GameConfig.playerBulletType = BULLET_TYPE_FIREBALL;
+        //   break;
 
-      GameConfig.levelEnemyMaxCount = Math.min(13,GameConfig.levelEnemyMaxCount);
-  
-      this.gameLevelTimer.set(5); // every 5 seconds
+        default:
+          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+          GameConfig.playerSize = rand(30, 90);
+          GameConfig.playerBulletSize = rand(4, 12);
+          GameConfig.playerShootCoolDownValue = rand(.001, .1);
+          GameConfig.playerShootPattern = randInt(0, PLAYER_SHOOT_PATTERN_MODES.length);
+          GameConfig.playerShootSpreadAngle = Math.PI / 180 * randInt(10, 30);
+          break;
+      }
+
+      // Apply changed properties for all
+      this.units.forEach(unit => unit.setDynamicProperties());
+
+      this.gameLevelTimer.set(3); // every 5 seconds
     }
 
 
@@ -269,19 +352,20 @@ class GameState implements State {
 
     this.playerAlive = this.units.filter(f => f.team == TEAM_A).length > 0;
 
-    // Units explode at the end
+    // Units explode at the end of life
     this.units
       .filter(f => !f.Active || f.healthPoints < 1)
       .forEach(unit => {
 
         unit.explode(unit.Position);
 
-        if (unit.team == TEAM_B)
-          this.onEnemyKilled(unit);
+        if (unit.team == TEAM_B) {
+          this.onEnemyDestroyed(unit);
+        }
 
         if (unit.team == TEAM_A) {
           setTimeout(() => {
-             gameStateMachine.setState(summaryState);
+            gameStateMachine.setState(summaryState);
           }, 2000);
         }
       });
@@ -295,18 +379,19 @@ class GameState implements State {
       });
 
     // Remove death stuff
+    this.labels = this.labels.filter(f => f.Active);
     this.units = this.units.filter(f => f.Active && f.healthPoints > 0 && f.Position.y < drawEngine.canvasHeight);
     this.coins = this.coins.filter(f => f.Active && f.Position.y < drawEngine.canvasHeight);
     this.explosions = this.explosions.filter(f => f.Active && f.Position.y < drawEngine.canvasHeight);
-    this.bullets = this.bullets.filter((f: GameObject) => { return f.Active; });
+    this.bullets = this.bullets.filter(f => f.Active && f.Position.y > 0 && f.Position.y < drawEngine.canvasHeight);
 
 
     // DRAW BACKGROUND MOVING
     this.gameMap.drawTileMap(drawEngine.context, dt);
 
 
-    // CREATE ENEMY
-    if ( this.enemySpawnTimer.elapsed() && this.getEnemies().length < GameConfig.levelEnemyMaxCount) { 
+    // ENEMY SPAWN
+    if (!debug.enemyPaused && this.enemySpawnTimer.elapsed() && this.enemyList.length > 0) {
 
       let hw = drawEngine.canvasWidth / 2;
       let hh = drawEngine.canvasHeight / 2;
@@ -314,27 +399,28 @@ class GameState implements State {
       const startPosition = new Vector(hw, hh);
       const sizeBase = new Vector(1, 1).scale(GameConfig.enemySize);
 
-        [...Array(1).keys()].forEach(() => { //
+      [...Array(1).keys()].forEach(() => { //
 
-          const leftOrRight: number = Math.random()<.5?0:1;
+        const leftOrRight: number = Math.random() < .5 ? 0 : 1;
 
-          startPosition.add(new Vector(hw * (leftOrRight == 1 ? -1 : 1) * 1.2, -hh * .6)); // 
+        let enemyHeightSpawnPosition = -hh * .4;
 
-          let value = this.getEnemyNextValue(); // coinValues[Math.floor(this.stats.enemiesCreated % coinValues.length-1)];
+        startPosition.add(new Vector(hw * (leftOrRight == 1 ? -1 : 1) * 1.2, enemyHeightSpawnPosition)); // 
 
-          let enemy = this.enemySpawn(startPosition, sizeBase, leftOrRight, value);
+        let value = this.getEnemyNextValue(); // coinValues[Math.floor(this.stats.enemiesCreated % coinValues.length-1)];
 
-          this.units.push(enemy);
-        });
-      
+        // TODO not all enemies drop coin
+        value = 0;
+
+        let enemy = this.enemySpawn(startPosition, sizeBase, leftOrRight, value);
+
+        this.units.push(enemy);
+      });
+
 
       // if (this.getEnemies().length > 500)
-        this.enemySpawnTimer.set(3);
+      this.enemySpawnTimer.set(GameConfig.enemySpawnTime);
     }
-
-
-    // TEST Random Coins
-    debug.testCoins && this.testCoins();
 
 
     this.bullets.forEach((item: GameObject) => {
@@ -342,16 +428,18 @@ class GameState implements State {
     });
 
 
-    if (controls.isEscape) {
-      gameStateMachine.setState(menuState);
-    }
+    // if (controls.isEscape) {
+    //   gameStateMachine.setState(introState);
+    // }
 
 
     // Enemy target designation
     enemyTargetDesignation(this.units);
 
 
-    // DAMAGE MANAGER
+    //////////////////////////////////
+    // DAMAGE MANAGER BEFORE PHYSICS COLLISION
+
     // Unit vs Unit: Damage both units
     this.units
       .forEach((unitA: Unit) => {
@@ -363,6 +451,7 @@ class GameState implements State {
             var isInRange = this.checkRange(unitA, unitB, unitA.damageRange);
             if (isInRange.a) {
               debug.damageMessages && console.log(`unit to unit damage: ${unitB.damagePoints} / ${unitA.damagePoints}`);
+              // !debug.godMode && 
               unitA.applyDamage(unitB.damagePoints);
               unitB.applyDamage(unitA.damagePoints);
             }
@@ -370,8 +459,8 @@ class GameState implements State {
           });
       });
 
-      // Explosion vs units
-      this.explosions
+    // Explosion vs units
+    this.explosions
       .forEach((explosion: Unit) => {
 
         this.units
@@ -379,9 +468,13 @@ class GameState implements State {
 
             var isInRange = this.checkRange(explosion, unit, explosion.damageRange);
             if (isInRange.a && explosion.damagePoints > 0) {
+
+              // if (!(debug.godMode && unit.team == TEAM_A)) {
               debug.damageMessages && console.log(`explosion to unit damage: ${explosion.damagePoints}`);
               unit.applyDamage(explosion.damagePoints);
-              // disable damage explosion after impact
+              // }
+
+              // disable explosion damage after impact
               explosion.damagePoints = 0;
             }
           });
@@ -392,108 +485,98 @@ class GameState implements State {
       .forEach((bullet: Bullet) => {
 
         this.units
-          .filter(f => f.team == TEAM_B && bullet.team == TEAM_A || f.team == TEAM_A && bullet.team == TEAM_B)
+          .filter(unit => unit.team == TEAM_B && bullet.team == TEAM_A || unit.team == TEAM_A && bullet.team == TEAM_B)
           .forEach((unit: Unit) => {
 
             var isInRange = this.checkRange(bullet, unit, bullet.damageRange);
             if (isInRange.a) {
+
+              // if (!(debug.godMode && unit.team == TEAM_A)) {
               debug.damageMessages && console.log(`bullet to unit damage: ${bullet.damagePoints}`);
               unit.applyDamage(bullet.damagePoints);
+              // }
               bullet.destroy();
             }
 
           });
       });
 
-    // Bullet vs Bullet: Destroy both
-    // this.bullets
-    // .forEach((bullet: Bullet) => {
-    //   this.bullets
-    //     .filter(f => f.team == TEAM_B && bullet.team == TEAM_A || f.team == TEAM_A && bullet.team == TEAM_B)
-    //     .forEach((other: Unit) => {
-    //       var collision = this.checkRange(bullet, other, bullet.Radius);
-    //       if (collision.a) {
-    //         other.destroy();
-    //         bullet.destroy();
-    //       }
-    //     });
-    // });
 
-    // Collect coins
+    //////////////////////////////////
+    // PHYSICS COLLISION MANAGER
+
+    const useCases = [
+      // Enemy bullets vs Player
+      [...this.getTeamBullets(TEAM_B), ...this.units.filter(f => f.team == TEAM_A)],
+      // Player bullets vs Enemies
+      [...this.getTeamBullets(TEAM_A), ...this.getEnemies()],
+      // All units except bombs
+      [...this.units.filter(f => f.type != 'bomb')],
+      // Bombs vs Player
+      [...this.units.filter(f => f.type == 'bomb'), ...this.units.filter(f => f.team == TEAM_A)],
+      // Coins vs coins
+      [...this.coins],
+    ];
+
+    useCases.forEach((useCase) => {
+      this.collisionTree.clear();
+      useCase
+        .forEach(item => {
+          this.collisionTree.insert(item);
+        });
+      manageUnitCollision(useCase, dt);
+    });
+
+
+    //////////////////////////////////
+    // COLLISION EVENTS
+
+    // Touched coins => Collected coins
+    this.collectors
+      .forEach(collector => {
+
+        this.coins
+          .filter(f => f.type == COIN_TOUCHED)
+          // .filter(f => f.number != 13)
+          .some((coin: Coin) => {
+
+            var collision = this.checkRange(collector, coin, collector.Radius);
+            if (collision.a) {
+              this.onCoinCollected(collector, coin);
+              return true;
+            }
+          });
+      });
+
+    // Coin yellow => Touched coins
     this.coins
+      .filter(f => f.type == COIN_YELLOW)
       .forEach((coin: Coin) => {
 
         this.units
           .filter(f => f.team == TEAM_A)
-          .forEach((unit: Unit) => {
+          .some((unit: Unit) => {
 
-            var collision = this.checkRange(coin, unit, unit.Radius);
+            var collision = this.checkRange(unit, coin, unit.Radius);
             if (collision.a) {
               this.onCoinTouched(coin);
+              return true;
             }
 
           });
-
-        this.collector.forEach(collector => {
-          if (coin.movePosition && collector) {
-            var collision = this.checkRange(coin, collector, collector.Radius);
-            if (collision.a) {
-              this.onCoinCollected(collector, coin);
-            }
-          }
-        });
       });
-
-    // PHYSICS COLLISION MANAGER
-
-    // Bullets vs Shooters
-    let collisionList: (Unit | Shooter | Coin)[] = [...this.units.filter(f => f.team == TEAM_A), ...this.bullets.filter(f => f.team == TEAM_B)];
-    this.collisionTree.clear();
-    collisionList
-      .forEach(item => {
-        this.collisionTree.insert(item);
-      });
-    manageUnitCollision(collisionList, dt);
-
-    // Bullets vs Shooters
-    collisionList = [...this.getEnemies(), ...this.bullets.filter(f => f.team == TEAM_A)];
-    this.collisionTree.clear();
-    collisionList
-      .forEach(item => {
-        this.collisionTree.insert(item);
-      });
-    manageUnitCollision(collisionList, dt);
-
-    // Shooters
-    collisionList = [...this.units];
-    this.collisionTree.clear();
-    collisionList
-      .forEach(item => {
-        this.collisionTree.insert(item);
-      });
-    manageUnitCollision(collisionList, dt);
-
-    // Coins
-    collisionList = [...this.coins];
-    this.collisionTree.clear();
-    collisionList
-      .forEach(item => {
-        this.collisionTree.insert(item);
-      });
-    manageUnitCollision(collisionList, dt);
 
 
     // Shoot
     this.units
       .forEach((shooter: Shooter) => {
-        let canShoot = this.shooterControlMode(shooter);
-        if (shooter.targetPosition && canShoot) {
+        if (shooter.targetPosition && this.shooterControlMode(shooter)) {
           shooter.shootTo(shooter.targetPosition);
         }
       });
 
 
-    const deltaMove = 2.0;
+    const deltaMove = 2.5;
     let move = { h: 0, v: 0 };
     move.h += controls.isLeft ? -deltaMove : 0;
     move.h += controls.isRight ? deltaMove : 0;
@@ -504,10 +587,11 @@ class GameState implements State {
     // MOVE COINS
     this.coins.forEach((coin: Coin) => {
 
-      if (!coin.movePosition) {
-        coin.Acceleration.add(scrollSpeed);
+      if (coin.movePosition) {
+        let force = coin.moveForce();
+        coin.Acceleration.add(force);
       } else {
-        coin.Acceleration.add(coin.moveForce());
+        coin.Acceleration.add(new Vector(0, GameConfig.scrollSpeed));
       }
 
       // Max 
@@ -533,17 +617,14 @@ class GameState implements State {
 
     // MOVE BULLETS
     this.bullets.forEach((bullet: Bullet) => {
-
       bullet.Velocity.add(bullet.Acceleration);
       bullet.Position.add(bullet.Velocity);
-
       // No Drag for projectile
       // bullet.Velocity.scale(0.99);
-
       // reset acceleration
       bullet.Acceleration.scale(0);
-
     });
+
 
     this.units.forEach((item: Unit) => {
 
@@ -590,19 +671,29 @@ class GameState implements State {
 
     });
 
-    [...this.units, ...this.bullets, ...this.coins, ...this.explosions].forEach((item: any) => {
-      item._update(dt);
-    });
+    /////////////////////////////
+    // UPDATE OBJECTS
 
+    [...this.units, ...this.bullets, ...this.coins, ...this.explosions, ...this.collectors]
+      .forEach((item: any) => {
+        item._update(dt);
+      });
 
-    // if (true) {
-    //   drawEngine.context.beginPath()
-    //   drawEngine.drawQuadtree(this.collisionTree, drawEngine.context);
-    // }
+    /////////////////////////////
+    // DRAW QUADTREE
 
-    // DRAW
+    // drawEngine.context.beginPath();
+    // drawEngine.drawQuadtree(this.collisionTree, drawEngine.context);
 
-    [...this.units, ...this.bullets, ...this.coins, ...this.explosions]
+    /////////////////////////////
+    // DRAW OBJECTS
+
+    [...this.units,
+    ...this.bullets,
+    ...this.coins,
+    ...this.explosions,
+    ...this.collectors,
+    ]
       .sort((a: GameObject, b: GameObject) => { return -((b.Position.y + b._z) * 10000 + b.Position.x) + ((a.Position.y + a._z) * 10000 + a.Position.x); })
       .forEach((item: GameObject) => {
         item.draw(drawEngine.context);
@@ -612,17 +703,33 @@ class GameState implements State {
     drawEngine.postShake();
 
 
-    this.collector.forEach((coin: CoinGreen) => {
-      coin.draw(drawEngine.context);
-    });
-    // drawEngine.drawText('' + this.score, 60, this.dummyCoin!.Position.x, this.dummyCoin!.Position.y + 25)
+    this.labels.forEach((label: Label) => {
+      // label.draw(drawEngine.context);
+      // if (label.movePosition) {
+      //   let force = label.moveForce();
+      //   label.Acceleration.add(force);
+      label.Acceleration.add(Vector.createSize(.2));
+      label.Velocity.add(label.Acceleration);
+      label.Position.add(label.Velocity);
+      label.Acceleration.scale(0);
+      // }
+      label._update(dt);
 
+      drawEngine.drawText('' + label.text, 60, label.Position.x, label.Position.y);
+    });
+
+
+    //
     drawEngine.context.restore();
 
-    drawEngine.drawText('' + time.toFixed(2), 28, drawEngine.canvasWidth * .95, 40);
+
+    /////////////////////////////
+    // DRAW HEADER
+
+    drawEngine.drawText('' + time.toFixed(2), 30, drawEngine.canvasWidth * .95, 40, 'white', 'right');
+    // drawEngine.drawText('bullets:' + this.bullets.length, 30, drawEngine.canvasWidth * .95, 80, 'white', 'right');
     // drawEngine.drawText('' + dt.toFixed(2), 28, drawEngine.canvasWidth * .95, 40);
-    // drawEngine.drawText('Level ' + this.level, 50, drawEngine.canvasWidth * .1, 50);
-    // drawEngine.drawText('bullets:' + this.bullets.length, 40, drawEngine.canvasWidth / 2, 100);
+    drawEngine.drawText(`Level : ${1 + GameConfig.levelCurrentIndex} of ${GameConfig.levelEnemyCount.length}`, 50, 10, 50, 'white', 'left');
     // drawEngine.drawText('coins:' + this.coins.length, 40, drawEngine.canvasWidth / 2, 150)
     // drawEngine.drawText('explo:' + this.explosions.length, 40, drawEngine.canvasWidth / 2, 200)
     // drawEngine.drawText('shakeForce:' + this.shakeForce, 40, drawEngine.canvasWidth / 2, 250)
@@ -631,34 +738,45 @@ class GameState implements State {
 
     // if (this.currentMessage)
     //   drawEngine.drawText('' + this.currentMessage, 40, drawEngine.canvasWidth * .5, 120, 'white', 'center');
-    
-    let message = `kills: ${this.stats.kills} of ${this.stats.killsGoal}`;
+
+    // let message = `${this.stats.kills} of ${this.stats.killsGoal}`;
     // message += ` (${this.getEnemies().length}/${GameConfig.levelEnemyMaxCount.toFixed(0)})`;
 
-    drawEngine.drawText(message , 40, drawEngine.canvasWidth * .5, 120, 'white', 'center');
+    drawEngine.drawText(`Enemies: ${this.stats.killsGoal - this.stats.kills} of ${this.stats.killsGoal}`, 40, drawEngine.canvasWidth * .95, 270, 'white', 'right');
+    // drawEngine.drawText(`Points: ${this.stats.maxScoreAvailable} max`, 40, drawEngine.canvasWidth * .95, 320, 'white', 'right');
+    // drawEngine.drawText(`Collector: ${this.collectorCoin?.number}`, 40, drawEngine.canvasWidth * .95, 370, 'white', 'right');
+
 
     let currentHealthRatio = this.player!.healthPoints / this.player!.maxHealthPoints;
 
-    const healthBarProps = {x:20, y:180, w : 400, h:50};
+    const healthBarProps = { x: drawEngine.canvasWidth * .2 - 200, y: 180, w: 400, h: 50 };
     drawEngine.drawRectangle(new Vector(healthBarProps.x, healthBarProps.y), new Vector(healthBarProps.w, healthBarProps.h), { fill: '#fff' });
-    drawEngine.drawRectangle(new Vector(healthBarProps.x, healthBarProps.y), new Vector(healthBarProps.w * currentHealthRatio, healthBarProps.h), { fill: currentHealthRatio>.5?'#0f0':'#f00' });
+    drawEngine.drawRectangle(new Vector(healthBarProps.x, healthBarProps.y), new Vector(healthBarProps.w * currentHealthRatio, healthBarProps.h), { fill: currentHealthRatio > .5 ? '#0f0' : '#f00' });
     // drawEngine.drawText('Health ' + this.player?.healthPoints.toFixed(0), 40, 18, 70, 'white', 'left');
 
     // drawEngine.drawText(`particles: ${globalParticles.length}` , 40, drawEngine.canvasWidth * .5, 200, 'white', 'center');
 
-    drawEngine.drawText('' + this.collectorYellow!.number, this.collectorYellow!.Size.x*2, this.collectorYellow!.Position.x, this.collectorYellow!.Position.y - this.collectorYellow!.Radius);
+
+    drawEngine.drawText('score: ' + this.score, 60, drawEngine.canvasWidth * .95, 195, 'yellow', 'right');
 
 
     if (controls.DeleteKey) {
       this.player?.explode(this.player?.Position);
+
+      // console.log('llamada con rebotes');
+
+      // debounce(() => {
+      //   this.metodoSinRebotes.bind(this, { target: this, Position: this.collectorCoin!.Position, text: "+1000" });
+      // }, 300);
     }
 
     if (controls.isEscape) {
       gameStateMachine.setState(menuState);
+      gameStateMachine.setState(introState);
     }
 
     // CURSOR 
-    drawEngine.drawCircle(inputMouse.pointer.Position, 60, {stroke: transparent, fill: colorShadow});
+    drawEngine.drawCircle(inputMouse.pointer.Position, 60, { stroke: transparent, fill: colorShadow });
 
     // PARTICLES
     !debug.showWires && globalParticles.forEach(_ => _.draw(drawEngine.context));
@@ -666,24 +784,82 @@ class GameState implements State {
 
   }
 
-  private coinValues = [10, 3, 5, 8, 9, 4];
+  metodoSinRebotes(props: { target: any; Position: Vector; text: string; }): void {
+    console.log('llamada sin rebotes');
+    this.createLabel(props.Position, props.text);
+  }
+
+
+  private coinValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  // private coinValues = [10, 1, 3, 5, 8, 9, 4];
+  // private coinValues = [1,2,3]; // EASY
+  // private coinValues = [8,5,6,7,9,4]; // DIFICULTY MODE
+  // private coinValues = [13]; // HARD MODE
   private coinIndex = 0;
 
-  private createEnemyValues(count: number = 1) {
+  private createEnemyCount(count: number = 1) {
+    let list: number[] = [];
+    let maxScoreAvailable = 0;
+    let intent = 0;
 
-    while(this.enemyList.length < count) {
-      this.coinValues = [...Array(12).keys()];
-      let value = 1 + this.coinValues[Math.floor((Math.random() *  this.coinValues.length))];
-      this.enemyList.push(value);
+    while (list.length < count) {
+      let value = this.coinValues[(randInt(0, this.coinValues.length))];
+      list.push(value);
     }
+
+    return { intent, list, maxScoreAvailable };
+  }
+
+  private createEnemyValues(maxScore: number = 1) {
+
+    console.log('maxScore desired: ' + maxScore);
+
+    let list: number[] = [];
+    let maxScoreAvailable = 0;
+    let intent = 0;
+    const initialValue: number = 13;
+
+    do {
+
+      list = [];
+
+      while (list.reduce((a: number, c: number) => {
+        if (a + c == 13) { c = 0; return a; } // Avoid acumulated 13
+        return a + c;
+      }, initialValue) < maxScore) {
+        let value = this.coinValues[(randInt(0, this.coinValues.length))];
+        list.push(value);
+      }
+
+      maxScoreAvailable = list.reduce((a: number, c: number) => a + c, 0);
+
+    } while (++intent < 1000 && maxScoreAvailable != maxScore);
+
+    console.log('intent ' + intent + '. max score available: ' + maxScoreAvailable);
+    console.log('list: ' + JSON.stringify(list));
+
+    // the fun one
+    list.push(13);
+
+    // shuffle list
+    list = list
+      .map(value => ({ value, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ value }) => value);
+
+    // list = [5, 8, 5, 8, 5, 8, 5, 8, 5, 8, 5, 8]
+
+    return { intent, list, maxScoreAvailable };
+
 
   }
 
 
   private getEnemyNextValue() {
 
-    let value = this.enemyList[this.coinIndex]; // coinValues[Math.floor(this.stats.enemiesCreated % coinValues.length-1)];
-    if (++this.coinIndex >= this.enemyList.length) this.coinIndex = 0;
+    let value = this.enemyList.shift();
+
+    // console.log('enemy remain: ' + JSON.stringify(this.enemyList));
 
     return value;
   }
@@ -699,7 +875,7 @@ class GameState implements State {
     let enemy = this.createEnemy(unitPosition, size, value, color);
 
     // Set Path to follow
-    enemy.path = [new Vector(100, 300), new Vector(100, 1200), new Vector(1000, 1200), new Vector(1000, 300)];
+    enemy.path = ENEMY_PATH[GameConfig.ennemyPath];
 
     if (leftOrRight)
       enemy.path = enemy.path.reverse();
@@ -710,26 +886,6 @@ class GameState implements State {
     return enemy;
   }
 
-  private testCoins() {
-    if (Math.floor(time) % 50 == 0) {
-
-      let colors: COIN_TYPE[] = [COIN_TYPE_GREEN];
-
-      const color = colors[Math.floor((Math.random() * colors.length))];
-
-      let coin = createCoin(color, new Vector(drawEngine.canvasWidth / 2 + rand(-50, 50), drawEngine.canvasHeight / 2), new Vector(25, 25));
-
-      coin.maxVelocity = 2;
-
-      const coinValues = [...Array(12).keys()];
-      let value = 1 + coinValues[Math.floor((Math.random() * coinValues.length))];
-
-      coin.number = value;
-      coin.showNumber = true;
-
-      this.coins.push(coin);
-    }
-  }
 
   private playerPositionAreaConstraint(item: Unit) {
     if (item.Position.x < item.Radius) {
@@ -756,9 +912,9 @@ class GameState implements State {
 
   private shooterControlMode(shooter: Shooter) {
     // Auto
-    return true;
+    // return true;
     // Manual
-    return shooter.team == TEAM_A ? controls.isSpace : true;
+    return shooter.team == TEAM_A && !GameConfig.playerAutoShoot ? controls.isSpace : true;
 
   }
 
@@ -780,167 +936,194 @@ class GameState implements State {
 
     color = colors[value % colors.length];
 
-    if (value == 13) color = '#000';
-
     return color;
   }
 
-  onEnemyKilled(enemy: Shooter, coinCount = 1) {
+  onEnemyDestroyed(enemy: Shooter) {
 
     const startPosition = new Vector(enemy.Position.x, enemy.Position.y);
 
-    let coinSize = new Vector(GameConfig.coinSize, GameConfig.coinSize);
+    let size = new Vector(GameConfig.coinSize, GameConfig.coinSize);
 
-    [...Array(coinCount).keys()].forEach(() => {
+    let position = startPosition.clone(); // .add(Vector.rand().scale(size.length() * 2));
 
-      let coinPosition = startPosition.clone().add(new Vector(rand(-coinSize.length(), coinSize.length()), rand(-coinSize.length(), coinSize.length())));
+    if (enemy.scorePoints > 0) {
+      // Show Score label
+      this.createLabel(enemy.Position, '+' + enemy.scorePoints, { moveTo: Vector.createSize(50).rotate(-Math.PI / 2) });
 
-      // game Coin
-      let coin = createCoin(COIN_TYPE_GREEN, coinPosition, coinSize);
-      coin.maxVelocity = 2;
-      coin.number = enemy.number;
-      coin.showNumber = true;
-      coin.Size = coinSize;
-      this.coins.push(coin);
+      // Score points
+      this.score += enemy.scorePoints;
+    }
 
-      // random Coin
-      // coinPosition = startPosition.clone().add(new Vector(rand(-coinSize.length(), coinSize.length()), rand(-coinSize.length(), coinSize.length())));
-      // let colors: COIN_TYPE[] = [COIN_TYPE_RED, COIN_TYPE_BLUE];
-      // const color = colors[Math.floor((Math.random() * colors.length))];
+    // game Coin
+    if (enemy.number > 0) {
 
-      // let randomCoin = createCoin(color, coinPosition, coinSize);
-      // randomCoin.maxVelocity = 2;
-      // randomCoin.Size = coinSize;
-      // this.coins.push(randomCoin);
+      setTimeout(() => {
+        let coin = CollectibleFactory.createCollectible(COIN_YELLOW, { position, size });
+        coin.maxVelocity = 2;
+        coin.number = enemy.number;
+        coin.showNumber = true;
+        coin.Size = size;
+        this.coins.push(coin);
+      }, 100);
 
+    }
 
-    });
-
-    this.stats.kills ++;
+    if (!(enemy instanceof Bomb))
+      this.stats.kills++;
 
   }
 
   onCoinTouched(coin: Coin) {
+    if (!coin.Active) return;
 
-    if (coin instanceof CoinGreen && this.collectorYellow) {
-      this.sendToCoinCollector(coin);
-    }
-    if (coin instanceof CoinRed) {
-      this.player!.weaponBulletType = BULLET_TYPE_FIREBALL;
-      this.currentMessage = 'FIREBALL';
-      coin.destroy();
-    }
-    if (coin instanceof CoinBlue) {
-      this.player!.weaponBulletType = BULLET_TYPE_BALL;
-      this.currentMessage = 'BALL';
-      coin.destroy();
+
+    switch (coin.type) {
+      case COIN_RED:
+        this.player!.weaponBulletType = BULLET_TYPE_FIREBALL;
+        this.createLabel(this.collectorCoin!.Position, 'FIREBALL');
+        break;
+      case COIN_BLUE:
+        this.player!.weaponBulletType = BULLET_TYPE_BULLET;
+        this.createLabel(this.collectorCoin!.Position, 'BULLET');
+        break;
+
+      default:
+        break;
     }
 
-    // Collected
-    if (coin instanceof CoinYellow) {
-      this.onPlayerCoinCollected(coin);
+    // Touched
+    if (coin.type == COIN_YELLOW) {
+      this.onPlayerCoinTouched(coin);
     }
+
+    sound(SND_COIN);
 
   }
 
-  onPlayerCoinCollected(coin: Coin) {
-    
-    // avoid loop
-    if (coin.number == 13 && coin.follow) return;
+
+  onPlayerCoinTouched(coin: Coin) {
+    if (!coin.Active) return;
 
     const p = this.player!;
 
-    console.log('Collect: '+ p.number +' + '+ coin.number + ' = ' + (p.number + coin.number) );
+    console.log('collect ' + coin.type + ' ' + coin.name + ' ' + p.number + ' + ' + coin.number + ' = ' + (p.number + coin.number));
 
-    p.number += coin.number;
-    //coin.Size = new Vector(coin.number,coin.number).scale(4).add(new Vector(20,20));
-    // coin.destroy();
+    const spawnFrom = coin;
+    let position = spawnFrom.Position.clone().add(Vector.rand());
+    let size = Vector.createSize(GameConfig.coinSize);
 
-    // Boom Coin
-    if (p.number == 13) {
+    let rewardCoin = CollectibleFactory.createCollectible(COIN_TOUCHED, { position, size });
+    rewardCoin.number = coin.number; // 1+p.slot;
+    rewardCoin.maxVelocity = 15;
+    rewardCoin.maxAcceleration = 100;
+    rewardCoin.showNumber = true;
 
-      // oneTime condition
-      p.number = 0;
+    // Send to coin collector
+    rewardCoin.follow = this.collectorCoin;
 
-      let boomCoin = createCoin(COIN_TYPE_GREEN, p.Position.add(new Vector(0,-1).scale(p.Radius)));
-      boomCoin.number = 13;
-      boomCoin.maxVelocity = 3;
-      boomCoin.maxAcceleration = 10;      
-      boomCoin.Size.scale(GameConfig.coin13Size);
-      boomCoin.color = '#000';
-      boomCoin.showNumber = true;
-      boomCoin.follow = p;
-      this.coins.push(boomCoin);
+    this.coins.push(rewardCoin);
 
-      // comprobar si ya se ha configurado un intervalo
-      if (!nIntervId) {
-        nIntervId = setInterval(() => {
-          sound(SND_TICTAC);
-        }, 500);
-      }
-
-      setTimeout(() => {
-        let explosion = new Explosion(boomCoin.Position, boomCoin.Size, TEAM_B, boomCoin.Size.length() * 3, p);
-        explosion.strokeColor = 'rgb(0,0,0,.5)';
-        explosion.fillColor = 'rgb(0,0,0,.5)';
-        explosion.Mass = 1000;
-        this.explosions.push(explosion);
-
-        this.shakeForce = 150;
-        boomCoin.destroy();
-
-        sound(SND_EXPLOSION);
-
-        clearInterval(nIntervId!);
-        // liberar nuestro inervalId de la variable
-        nIntervId = null;
-
-      }, 3000);
-
-      coin.destroy();
-
-    } 
-    else if (p.number > 13) {
-      let coinSize = new Vector(GameConfig.coinSize, GameConfig.coinSize);
-      let scoreCoin = createCoin(COIN_TYPE_YELLOW, p.Position, coinSize);
-      scoreCoin.number = p.number;
-      scoreCoin.prefix = "+";
-      scoreCoin.showNumber = true;
-      scoreCoin.showBall = false;
-      scoreCoin.maxVelocity = 15;
-      this.sendToCoinCollector(scoreCoin);
-      this.coins.push(scoreCoin);
-
-      sound(SND_COIN);
-
-      p.number = 0;
-      coin.destroy();
-    }
-    else {
-      let bucketCoin = createCoin(COIN_TYPE_YELLOW, coin.Position.add(Vector.rand().scale(10)));
-      bucketCoin.number = p.number;
-      bucketCoin.maxVelocity = 30;
-      bucketCoin.maxAcceleration = 100;      
-      bucketCoin.Size.scale(10);
-      bucketCoin.showNumber = true;
-      bucketCoin.follow = p;
-      this.coins.push(bucketCoin);      
-
-      sound(SND_COIN);
-    }
+    coin.destroy();
 
   }
 
-  private sendToCoinCollector(coin: Coin) {
-    if (coin instanceof CoinGreen && this.collectorYellow) {
-      coin.movePosition = this.collectorYellow.Position.clone();
-      //coin.movePosition!.add(new Vector(0, magicOffset));
+
+  private createBomb(position: Vector) {
+
+    let size = Vector.createSize(GameConfig.coin13Size);
+
+    let bomb = new Bomb({ position, size }, '#000');
+
+    bomb.maxHealthPoints = 10000;
+
+    bomb.maxVelocity = GameConfig.bombMaxVelocity;
+    bomb.maxAcceleration = GameConfig.bombMaxAcceleration;
+    // bombCoin.showNumber = true;
+
+    bomb.explode = () => {
+      let explosion = new Explosion({ position: bomb.Position, size: bomb.Size }, TEAM_B, bomb.Size.length() * 3);
+      explosion.strokeColor = 'rgb(0,0,0,.5)';
+      explosion.fillColor = 'rgb(0,0,0,.5)';
+      explosion.Mass = 1000;
+      this.explosions.push(explosion);
+
+      this.shakeForce = GameConfig.bombShake;
+      bomb.destroy();
+
+      sound(SND_EXPLOSION);
+
+      clearInterval(nIntervId!);
+      // liberar nuestro inervalId de la variable
+      nIntervId = null;
+    };
+
+    // comprobar si ya se ha configurado un intervalo
+    if (!nIntervId) {
+      nIntervId = setInterval(() => {
+        sound(SND_TICTAC);
+      }, 400);
     }
 
+    // Bomb will detonate in 5 sec.
+    setTimeout(() => {
+
+      bomb.destroy();
+
+      clearInterval(nIntervId!);
+      // liberar nuestro inervalId de la variable
+      nIntervId = null;
+    }, GameConfig.bombCountDownSecs * 1000);
+
+    return bomb;
   }
 
   onCoinCollected(collector: Coin, coin: Coin) {
-    collector.number += coin.number;
+    if (coin.number == 0) return;
+
+    if (collector.number + coin.number == 13) {
+
+      this.createLabel(collector.Position, "BOMB!");
+
+      let bomb = this.createBomb(collector.Position);
+
+      // Set Path to follow
+      bomb.path = [this.player!.Position];
+      // Start path follower
+      bomb.movePosition = bomb.path[bomb.currentPoint];
+
+      this.units.push(bomb);
+
+      collector.number = 0;
+      coin.number = 0;
+
+    } else {
+
+      // Collect points
+      collector.number += coin.number;
+
+      console.log('Collected: +' + coin.number + ' = ' + collector.number);
+
+      // reset coin
+      coin.number = 0;
+
+      if (collector.number > 12) {
+
+        // Show Score label
+        this.createLabel(collector.Position, '+' + collector.number, { moveTo: Vector.createSize(50).rotate(-Math.PI / 2) });
+
+        // Score points
+        this.score += collector.number;
+
+        console.log('Score: +' + collector.number + ' = ' + this.score);
+
+        // empty collector
+        collector.number = 0;
+
+      }
+    }
+
+    sound(SND_COIN);
     coin.destroy();
   }
 
@@ -954,29 +1137,28 @@ class GameState implements State {
 
   private createEnemy(unitPosition: Vector, size: Vector, value: number, color: string) {
 
-    let enemy = new Shooter(unitPosition, size, TEAM_B, EntityType.Knight);
+    let enemy = new Shooter(unitPosition, size, TEAM_B);
 
     enemy.number = value;
     enemy.color = color;
 
-    enemy.damagePoints *= .8;
-    enemy.damageRange *= .8;
+    enemy.damagePoints = GameConfig.enemyDamagePoints;
+    enemy.damageRange = size.length();
 
-    enemy.maxHealthPoints = 300;
+    enemy.maxHealthPoints = GameConfig.enemyMaxHealthPoints;
 
-    enemy.maxVelocity = 5;
-    enemy.maxAcceleration = 30;
+    enemy.maxVelocity = GameConfig.enemyMaxVelocity;
+    enemy.maxAcceleration = GameConfig.enemyMaxAcceleration;
 
     enemy.bulletSpeed = GameConfig.enemyBulletSpeed;
 
     enemy.shootCoolDownValue = GameConfig.enemyShootCoolDownValue;
-    enemy.shootCoolDownTimer.set(rand(enemy.shootCoolDownValue, enemy.shootCoolDownValue*2));
+    enemy.shootCoolDownTimer.set(rand(enemy.shootCoolDownValue, enemy.shootCoolDownValue * 2));
 
     enemy.shootHandler = (targetPosition, bulletSpeed: Vector) => {
       let bulletSize = new Vector(GameConfig.enemyBulletSize, GameConfig.enemyBulletSize);
 
-      let enemyBullet = createBullet(GameConfig.enemyBulletType, enemy, bulletSize, bulletSpeed, targetPosition);
-
+      let enemyBullet = createBullet(GameConfig.enemyBulletType, enemy, bulletSize, bulletSpeed, new Vector(0, 0), targetPosition);
       // same height
       enemyBullet._z = enemy._z;
 
@@ -984,35 +1166,34 @@ class GameState implements State {
       enemyBullet.color = enemy.color;
 
       // 10% of enemy damage points
-      enemyBullet.damagePoints = enemy.damagePoints * .1;
+      enemyBullet.damagePoints = GameConfig.enemyBulletDamagePoints;
 
       enemyBullet.explode = (position: Vector) => {
 
         // sound(SND_EXPLOSION);
 
-        let explosion = new Explosion(position, size, enemy.team, size.length(), enemy);
+        let explosion = new Explosion({ position, size }, enemy.team, size.length());
         explosion.color = enemy.color;
-        explosion.damagePoints = 5;
+        explosion.damagePoints = GameConfig.enemyBulletExplosionDamagePoints;
 
         if (enemyBullet instanceof Fireball) {
           // no color for fire explosion
           explosion.color = '';
-
           explosion.range = 100;
         }
-        this.explosions.push(explosion);          
+        this.explosions.push(explosion);
 
       };
-
       this.bullets.push(enemyBullet);
+
 
       // if (this.units.length < 10)
       //   sound(SND_ARROW_SHOOT)
     };
 
     enemy.explode = (position: Vector) => {
-      let explosion = new Explosion(position, size, enemy.team, size.length()*2, enemy);
-      explosion.damagePoints = 50;
+      let explosion = new Explosion({ position, size }, enemy.team, size.length() * 2);
+      explosion.damagePoints = GameConfig.enemyExplosionDamagePoints;
       explosion.Mass = 100;
       explosion.color = enemy.color;
       this.explosions.push(explosion);
@@ -1021,7 +1202,7 @@ class GameState implements State {
       sound(SND_DEATH);
     };
 
-    this.stats.enemiesCreated ++;
+    this.stats.enemiesCreated++;
 
     return enemy;
   }
@@ -1035,59 +1216,84 @@ class GameState implements State {
 
     [...Array(GameConfig.playerUnits).keys()].forEach(() => {
 
-      startPosition.add(new Vector(rand(-10, 10), rand(-10, 10)));
+      startPosition.add(new Vector(rand(-1, 1), rand(-1, 1)));
 
       [...Array(1).keys()].forEach(col => {
 
-        let unitPosition = startPosition.clone().add(new Vector(50, 0).rotate(2 * PI / 12 * col));
+        let unitPosition = startPosition.clone().add(new Vector(0, 0).rotate(2 * PI / 12 * col));
 
-        player = new Shooter(unitPosition, size, TEAM_A, EntityType.Archer);
-        player.showShadow = false
+        player = new Shooter(unitPosition, size, TEAM_A);
+        player.showShadow = true;
 
-        player.weaponBulletType = GameConfig.playerBulletType;
+        player.setDynamicProperties = () => {
 
-        player.color = '#C0C0C0';
+          player.weaponBulletType = GameConfig.playerBulletType;
 
-        player.shootCoolDownValue = GameConfig.playerShootCoolDownValue;
-        player.shootCoolDownTimer.set(0);
-        player.bulletSpeed = GameConfig.playerBulletSpeed;
+          player.color = '#C0C0C0';
+
+          player.shootCoolDownValue = GameConfig.playerShootCoolDownValue;
+          player.shootCoolDownTimer.set(player.shootCoolDownValue);
+          player.bulletSpeed = GameConfig.playerBulletSpeed;
+
+        };
+        player.setDynamicProperties();
 
 
-        player.shootHandler = (targetPosition, bulletVelocity: Vector) => {
+        player.shootHandler = (targetPosition: Vector, bulletVelocity: Vector, zv: number) => {
+          if (targetPosition == undefined) return;
+
+          let bulletTargetPosition = targetPosition.clone();
 
           let bulletSize = new Vector(GameConfig.playerBulletSize, GameConfig.playerBulletSize);
 
-          let playerBullet = createBullet(player.weaponBulletType, player, bulletSize, bulletVelocity, targetPosition);
+          const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
 
-          playerBullet.damagePoints = 100;
+          if (++player.shotPhase > currentMode.dest.length)
+            player.shotPhase = 0;
+
+          let initOffset = new Vector(currentMode.origin[player.shotPhase] * player.Size.x);
+
+
+          bulletVelocity.rotate(currentMode.dest[player.shotPhase] * GameConfig.playerShootSpreadAngle);
+
+          let playerBullet = createBullet(player.weaponBulletType, player, bulletSize, bulletVelocity, initOffset, bulletTargetPosition);
+
+          // playerBullet._zv = zv;
+
+          playerBullet.damagePoints = GameConfig.playerBulletDamagePoints;
 
           playerBullet.explode = (position: Vector) => {
 
-            // No explosion for bullets
+            // No explosion for all bullets
+            if (rand(1) > .1) return;
 
             if (playerBullet instanceof Fireball) {
-
-              let explosion = new Explosion(position, bulletSize, player.team, bulletSize.length(), player);
+              let explosion = new Explosion({ position, size: bulletSize }, player.team, .01 * bulletSize.length());
               explosion.Mass = 100;
+              explosion.color = player.color;
+              explosion.damagePoints = GameConfig.playerBulletExplosionDamagePoints;
               this.explosions.push(explosion);
               // sound(SND_EXPLOSION);
+
             }
 
-            
+            if (playerBullet instanceof Bullet) {
+            };
           };
+
 
           this.bullets.push(playerBullet);
 
           // if (this.units.length < 10)
           if (this.shootSoundColdDownTimer.elapsed()) {
             sound(SND_ARROW_SHOOT);
-            this.shootSoundColdDownTimer.set(2 );
+            this.shootSoundColdDownTimer.set(2);
           }
         };
 
         player.explode = (position: Vector) => {
 
-          let explosion = new Explosion(position, size, player.team, size.length() * 4, player, defaultExplosionTime*4);
+          let explosion = new Explosion({ position, size }, player.team, size.length() * 4, defaultExplosionTime * 4);
           explosion.Mass = 100;
           // Avoid self damage to test player explosions
           explosion.damagePoints = 0;
@@ -1108,16 +1314,25 @@ class GameState implements State {
   }
 
 
-  checkRange(unit: GameObject, other: GameObject, range: number) {
-    var rSum = unit.Radius + range + other.Radius;
-    var dx = other.Position.x - unit.Position.x;
-    var dy = other.Position.y - unit.Position.y;
+  checkRange(obj: GameObject, other: GameObject, range: number) {
+    var rSum = obj.Radius + (range - obj.Radius) + other.Radius;
+    var dx = other.Position.x - obj.Position.x;
+    var dy = other.Position.y - obj.Position.y;
     return {
       a: rSum * rSum > dx * dx + dy * dy,
       b: rSum - Math.sqrt(dx * dx + dy * dy)
     };
   }
 
+  createLabel(position: Vector, text: string, props = { moveTo: Vector.createSize(50) }) {
+    let label = new Label({ position, size: Vector.createSize() }, text);
+    label.text = text;
+    label.movePosition = label.Position.clone().add(props.moveTo!);
+    setTimeout(() => {
+      label.destroy();
+    }, 500);
+    this.labels.push(label);
+  }
 
 }
 
@@ -1132,8 +1347,13 @@ function enemyTargetDesignation(Units: Shooter[]) {
     .slice(0, 100)
     .forEach((unit: Shooter) => {
 
-      let dist = drawEngine.canvasHeight * .8;
-      dist *= unit.team == TEAM_A ? -1 : 1;
+      // let dist = drawEngine.canvasHeight * 1.2;
+      let dist = 1;
+      if (unit.team == TEAM_A) {
+        dist *= -1 * GameConfig.playerBulletRange;
+      } else {
+        dist *= 1 * GameConfig.enemyBulletRange;
+      }
 
       const spreadX = rand(-20, 20);
       // Constraint vertical bullet distance
@@ -1141,7 +1361,7 @@ function enemyTargetDesignation(Units: Shooter[]) {
       // forget target after a while
       setTimeout(() => {
         unit.targetPosition = undefined;
-      }, rand(80, 500));
+      }, rand(80, 100));
 
     });
 }

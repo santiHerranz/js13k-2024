@@ -74,18 +74,6 @@ function resolveCollision(unit: GameObject, other: GameObject) {
   other.Velocity.x += 1 / other.Radius * impulse[0];
   other.Velocity.y += 1 / other.Radius * impulse[1];
 
-
-  // Boundaries
-  // if (unit.Position.x < unit.Radius ) {
-  //   unit.Position.x = unit.Radius
-  //   unit.Acceleration.zero()
-  //   unit.Velocity.zero()
-  // }
-  // if (unit.Position.x > drawEngine.canvasWidth - unit.Radius ) {
-  //   unit.Position.x = drawEngine.canvasWidth - unit.Radius
-  //   unit.Acceleration.zero()
-  //   unit.Velocity.zero()
-  // }
 }
 
 
