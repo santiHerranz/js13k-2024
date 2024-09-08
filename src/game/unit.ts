@@ -1,13 +1,15 @@
 import { drawEngine } from "@/core/draw-engine";
 import { Vector } from "@/core/vector";
 import { GameObject } from "@/game-object";
-import { debug, colorShadow } from "@/game-states/game-config";
+import { debug, colorShadow, transparent } from "@/game-states/game-config";
 import { time } from "@/index";
 
 export class Unit extends GameObject {
 
     showShadow: boolean = true;
    
+    hits: number = 0;
+
     team: number;
     number: number;
 
@@ -41,6 +43,7 @@ export class Unit extends GameObject {
     }    
 
     applyDamage(value: number) {
+        this.hits = Math.round(value/10);
         this._healthPoints -= value;
         this._healthPoints = Math.max(0,this._healthPoints);
         // console.log('applyDamage: '+ this._healthPoints +' ' + value);
@@ -113,6 +116,7 @@ export class Unit extends GameObject {
 
         // units shadow
         this.showShadow && drawEngine.drawCircle(this.Position, this.damageRange, {stroke: colorShadow, fill: colorShadow, lineWidth: 2}); // this.Size.length()
+
     }
 
 

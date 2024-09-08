@@ -99,6 +99,18 @@ export class Shooter extends Unit {
 
     draw(ctx: CanvasRenderingContext2D, dir: boolean = false) {
 
+        // hits
+        if (this.hits>0) {
+            drawEngine.context.save();
+            
+            // TODO
+            /// change composite mode to use that shape
+            // drawEngine.context.globalCompositeOperation = 'source-in';
+
+            drawEngine.drawCircle(this.Position, this.damageRange*1.2, {stroke: transparent, fill: 'rgb(255,255,255,.1)', lineWidth: 0});
+
+        }
+
         super.draw(ctx);
 
         if (!this.Visible) return;
@@ -142,6 +154,11 @@ export class Shooter extends Unit {
         // if (this.team == TEAM_B) {
         //     drawEngine.drawText(''+ this.number, size , this.Position.x, this.Position.y + 5);
         // }
+
+        if (this.hits>0) {
+            drawEngine.context.restore();
+        }
+
     }
 
 

@@ -38,7 +38,8 @@ class InputMouse {
     this.#listeners = [];
 
     // const canvas = document.getElementById('c2d');
-    const canvas = window;
+    // const canvas = window; // iOS Safari touch events stop firing with 17.4.1
+    const canvas = document.body;
 
     if (canvas) {
       canvas.addEventListener(MOUSE_EVENT_TYPE_DOWN, this.handleMouseDown, false);

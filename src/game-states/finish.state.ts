@@ -1,145 +1,143 @@
-import { State } from '@/core/state';
-import { drawEngine } from '@/core/draw-engine';
-import { controls } from '@/core/controls';
-import { gameStateMachine } from '@/game-state-machine';
-import { gameState } from './game.state';
-import { menuState } from './menu.state';
-import { inputMouse } from '@/core/input-mouse';
-import { globalParticles } from '@/game/game-particle';
-import { lerp, Timer } from '@/utils';
-import { colorShadow, debug, GameConfig, transparent } from './game-config';
-import { introState } from './intro.state';
+// import { State } from '@/core/state';
+// import { drawEngine } from '@/core/draw-engine';
+// import { controls } from '@/core/controls';
+// import { gameStateMachine } from '@/game-state-machine';
+// import { gameState } from './game.state';
+// import { inputMouse } from '@/core/input-mouse';
+// import { globalParticles } from '@/game/game-particle';
+// import { lerp, Timer } from '@/utils';
+// import { colorShadow, debug, GameConfig, transparent } from './game-config';
 
-const canvas: HTMLElement | null = document.getElementById('c2d');
+// const canvas: HTMLElement | null = document.getElementById('c2d');
 
-class FinishState implements State {
-  private isStartSelected = true;
-  spinTimer: Timer = new Timer(3);
-  score: number = 0;
-  maxScore: number = 0;
-  stars = 0;
-  dummyStars = 0;
+// class FinishState implements State {
+//   private isStartSelected = true;
+//   spinTimer: Timer = new Timer(3);
+//   score: number = 0;
+//   maxScore: number = 0;
+//   stars = 0;
+//   dummyStars = 0;
 
-  onEnter() {
+//   onEnter() {
 
-    canvas!.setAttribute(
-      "style",
-      // "background-color: #000;" + 
-      "background-color: #0E223A;" +
-      "image-rendering: optimizeSpeed;" +
-      "image-rendering: pixelated;" +
-      // "image-rendering: smooth;" +
-      // "image-rendering: -moz-crisp-edges;" +
-      ""
-    );
+//     canvas!.setAttribute(
+//       "style",
+//       // "background-color: #000;" + 
+//       "background-color: #0E223A;" +
+//       "image-rendering: optimizeSpeed;" +
+//       "image-rendering: pixelated;" +
+//       // "image-rendering: smooth;" +
+//       // "image-rendering: -moz-crisp-edges;" +
+//       ""
+//     );
 
-    // calculate stars
-    if (this.maxScore > 0) {
-      this.stars = Math.floor(3 * this.score / this.maxScore);
-      this.stars = Math.min(3, this.stars);
-    } else {
-      this.stars = 0;
-    }
+//     // calculate stars
+//     if (this.maxScore > 0) {
+//       this.stars = Math.floor(3 * this.score / this.maxScore);
+//       this.stars = Math.min(3, this.stars);
+//     } else {
+//       this.stars = 0;
+//     }
 
 
-    setTimeout(() => {
+//     setTimeout(() => {
 
-        gameStateMachine.setState(introState);
-    }, 3000);
+//         gameStateMachine.setState(introState);
+//     }, 3000);
 
-    // Carnival
+//     // Carnival
 
-    while (globalParticles.length)
-      globalParticles.pop();
+//     while (globalParticles.length)
+//       globalParticles.pop();
 
-  }
+//   }
 
-  onReset() {
-    GameConfig.levelUnlocked = [1];
-  }
+//   onReset() {
+//     GameConfig.levelUnlocked = [1];
+//   }
   
-  onLeave() {
+//   onLeave() {
 
 
-    // remove listeners
-    inputMouse.removeAllEventListener();
+//     // remove listeners
+//     inputMouse.removeAllEventListener();
 
-  }
+//   }
 
-  private spin = 15;
-  private currentAcc = .0001;
+//   private spin = 15;
+//   private currentAcc = .0001;
 
-  onUpdate(dt: number) {
+//   onUpdate(dt: number) {
 
-    this.spinControl(dt);
+//     this.spinControl(dt);
 
-    canvas!.setAttribute('style', 'background: repeating-conic-gradient(hsla(0,0%,100%,.2) ' + this.spin + 'deg ' + (this.spin + 15) + 'deg, hsla(0,0%,100%,0) ' + this.spin + 'deg ' + (this.spin + 30) + 'deg ) #0ac;');
+//     canvas!.setAttribute('style', 'background: repeating-conic-gradient(hsla(0,0%,100%,.2) ' + this.spin + 'deg ' + (this.spin + 15) + 'deg, hsla(0,0%,100%,0) ' + this.spin + 'deg ' + (this.spin + 30) + 'deg ) #0ac;');
 
-    const xCenter = drawEngine.canvasWidth / 2;
-    const yCenter = drawEngine.canvasHeight / 2;
+//     const xCenter = drawEngine.canvasWidth / 2;
+//     const yCenter = drawEngine.canvasHeight / 2;
 
-    // drawEngine.drawText('acc: ' + this.currentAcc.toFixed(0), 80, xCenter, yCenter - 400);
+//     // drawEngine.drawText('acc: ' + this.currentAcc.toFixed(0), 80, xCenter, yCenter - 400);
 
-    drawEngine.drawText(`FINISH`, 400, xCenter, yCenter -300, this.isStartSelected ? 'white' : 'gray');
+//     drawEngine.drawText(`FINISH`, 400, xCenter, yCenter -300, this.isStartSelected ? 'white' : 'gray');
 
-    drawEngine.drawText(`SCORE ${this.score}`, 200, xCenter, yCenter, this.isStartSelected ? 'white' : 'gray');
+//     drawEngine.drawText(`SCORE ${this.score}`, 200, xCenter, yCenter, this.isStartSelected ? 'white' : 'gray');
 
-    if (this.stars == 0) {
-      drawEngine.context.globalAlpha = .4;
-      this.dummyStars = 3;
-    }
+//     if (this.stars == 0) {
+//       drawEngine.context.globalAlpha = .4;
+//       this.dummyStars = 3;
+//     }
 
-    drawEngine.drawText(Array(this.dummyStars + this.stars).fill('⭐').join(''), 120, xCenter, yCenter + 180); //this.stars.toFixed(2) +' '+ 
+//     drawEngine.drawText(Array(this.dummyStars + this.stars).fill('⭐').join(''), 120, xCenter, yCenter + 180); //this.stars.toFixed(2) +' '+ 
 
-    if (this.stars == 0)
-      drawEngine.context.globalAlpha = 1;
+//     if (this.stars == 0)
+//       drawEngine.context.globalAlpha = 1;
 
 
-    // drawEngine.drawText(`of max:${this.maxScore}`, 80, xCenter, yCenter + 320);
+//     // drawEngine.drawText(`of max:${this.maxScore}`, 80, xCenter, yCenter + 320);
 
-    this.updateControls();
+//     this.updateControls();
 
-    if (controls.isEscape) {
-      gameStateMachine.setState(menuState);
-    }
+//     if (controls.isEscape) {
+//       gameStateMachine.setState(menu2State);
+//     }
 
-    // CURSOR 
-    drawEngine.drawCircle(inputMouse.pointer.Position, 60, { stroke: transparent, fill: colorShadow });
+//     // CURSOR 
+//     drawEngine.drawCircle(inputMouse.pointer.Position, 60, { stroke: transparent, fill: colorShadow });
 
-    // PARTICLES
-    !debug.showWires && globalParticles.forEach(_ => _.draw(drawEngine.context));
+//     // PARTICLES
+//     !debug.showWires && globalParticles.forEach(_ => _.draw(drawEngine.context));
 
-  }
+//   }
 
-  private spinControl(dt: number) {
-    this.currentAcc = lerp(this.currentAcc, 100, -.005);
-    this.currentAcc = Math.max(-100, this.currentAcc);
-    this.spin -= dt / this.currentAcc;
-    if (this.spin > 30) this.spin = 0;
-  }
+//   private spinControl(dt: number) {
+//     this.currentAcc = lerp(this.currentAcc, 100, -.005);
+//     this.currentAcc = Math.max(-100, this.currentAcc);
+//     this.spin -= dt / this.currentAcc;
+//     if (this.spin > 30) this.spin = 0;
+//   }
 
-  updateControls() {
-    if ((controls.isUp && !controls.previousState.isUp)
-      || (controls.isDown && !controls.previousState.isDown)) {
-      this.isStartSelected = !this.isStartSelected;
-    }
+//   updateControls() {
+//     if ((controls.isUp && !controls.previousState.isUp)
+//       || (controls.isDown && !controls.previousState.isDown)) {
+//       this.isStartSelected = !this.isStartSelected;
+//     }
 
-    if (controls.isConfirm && !controls.previousState.isConfirm) {
-      if (this.isStartSelected) {
-        gameStateMachine.setState(gameState);
-      } else {
-        this.toggleFullscreen();
-      }
-    }
-  }
+//     if (controls.isConfirm && !controls.previousState.isConfirm) {
+//       if (this.isStartSelected) {
+//         gameStateMachine.setState(gameState);
+//       } else {
+//         this.toggleFullscreen();
+//       }
+//     }
+//   }
 
-  toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  }
-}
+//   toggleFullscreen() {
+//     if (!document.fullscreenElement) {
+//       document.documentElement.requestFullscreen();
+//     } else {
+//       document.exitFullscreen();
+//     }
+//   }
+// }
 
-export const finishState = new FinishState();
+// export const finishState = new FinishState();

@@ -10,15 +10,23 @@ export interface ButtonStateProp {
   color: string;
   lineWidth: number;
   fontSize: number;
+  radiiX:number;
+  radiiY:number;
 }
+
 
 interface ButtonColors {
   default: ButtonStateProp;
   hover: ButtonStateProp;
   active: ButtonStateProp;
   disabled: ButtonStateProp;
+  selected: ButtonStateProp;
+}
+export interface ButtonProps {
+  x: number, y: number, w: number, h: number
 }
 
+const radii = 100;
 
 export class Button {
 
@@ -34,6 +42,9 @@ export class Button {
   text: string;
   title: string;
   data: string;
+  index = 0;
+  accesory:string | undefined = undefined;
+
 
   colors: ButtonColors;
 
@@ -43,55 +54,72 @@ export class Button {
   selected: boolean = false;
 
 
-  clickCB: (button: any) => void;
+  clickAction: Function;
 
   hoverEvent: () => void;
   hoverOutEvent: () => void;
   clickEvent: () => void;
 
 
-  constructor(x: number, y: number, w: number, h: number, text = "", title = "", fontSize: number = 60, colors: ButtonColors = {
+  constructor(props: ButtonProps, text = "", title = "", fontSize: number = 60, colors: ButtonColors = {
     'default': {
-      text: '#ccc',
-      color: transparent,
+      text: '#ddd',
+      color: 'rgb(150,150,150,.3)',
       lineWidth: 0,
-      lineColor: transparent,
-      fontSize: fontSize
+      lineColor: '#ccc',
+      fontSize: fontSize * 1.1,
+      radiiX: radii,
+      radiiY: radii*.5,
     },
     'hover': {
       text: '#fff',
       color: 'rgb(150,150,150,.3)',
       lineWidth: 0,
       lineColor: '#ccc',
-      fontSize: fontSize*1.1
+      fontSize: fontSize * 1.1,
+      radiiX: radii,
+      radiiY: radii,
     },
     'active': {
       text: '#fff',
       color: 'rgb(200,200,200,.3)',
       lineWidth: 0,
       lineColor: '#ccc',
-      fontSize: fontSize
+      fontSize: fontSize,
+      radiiX: radii,
+      radiiY: radii,
     },
     'disabled': {
       text: '#fff',
       color: '#ababab',
       lineWidth: 0,
       lineColor: '#ccc',
-      fontSize: fontSize
-    }
+      fontSize: fontSize,
+      radiiX: radii,
+      radiiY: radii,
+    },
+    'selected': {
+      text: '#fff',
+      color: '#ababab',
+      lineWidth: 4,
+      lineColor: '#ccc',
+      fontSize: fontSize,
+      radiiX: radii,
+      radiiY: radii,
+    },
   }) {
 
-    this.Position = new Vector(x, y);
-    this.Size = new Vector(w, h);
+    this.Position = new Vector(props.x, props.y);
+    this.Size = new Vector(props.w, props.h);
 
     this.name = '';
 
-    this.width = w;
-    this.height = h;
+    this.width = props.w;
+    this.height = props.h;
     this.text = text;
     this.title = title;
     this.data = '';
-    this.clickCB = () => { };
+    this.clickAction = () => { };
     this.colors = colors;
 
     this.state = 'default'; // current button state
@@ -252,8 +280,8 @@ export class Button {
 
       this.clickEvent();
 
-      if (typeof this.clickCB === 'function') {
-        this.clickCB(this);
+      if (typeof this.clickAction === 'function') {
+        this.clickAction(this);
       }
 
       this.state = 'default';

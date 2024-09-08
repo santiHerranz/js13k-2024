@@ -6,6 +6,9 @@ import { scrollSpeed } from "./game.state";
 export const colorShadow: string = 'rgb(10,10,10,0.2)';
 export const transparent: string = 'transparent'; 
 
+export const backButton = {label: '⏪', fontSize: 100};
+export const gameIcons = {heart: '🧡', coin: '🟡', diamond: '💎'};
+
 
 export const PLAYER_SHOOT_PATTERN_MODES: { origin: number[]; dest: number[]; spreadAngle:number; cooldown: number; }[] = [
   { origin: [0], dest: [0], spreadAngle: 0, cooldown: 1, }, // single straight bullet
@@ -26,6 +29,11 @@ export const GameConfig = {
   title: 'NFZ13',
   subtitle: 'No Flight Zone',
   
+  playerCoins: 0,
+  playerHearts: 0,
+  playerDiamond: 90,
+  repairCost: 100,
+
   playerUnits: 1,
 
   // Player body
@@ -70,9 +78,10 @@ export const GameConfig = {
   
   // levelEnemyCount: [3, 5, 8, 15, 20, 35, 50, 19, 150, 240, 380, 620, 1000], // exponencial
   // levelEnemyCount: [5, 8, 15, 20, 35], // , 50, 19, 150, 240, 350],
-  levelEnemyCount: [100, 8, 15, 20, 100], // , 50, 19, 150, 240, 350],
+  levelEnemyCount: [8, 15, 20, 100], // , 50, 19, 150, 240, 350],
   levelCurrentIndex: 0,
 
+  levelIndexUnlocked: [0], //,2,3,4,5
   levelUnlocked: [1,2,3,4,5], //
 
   

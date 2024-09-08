@@ -2,7 +2,8 @@ import { drawEngine } from './core/draw-engine';
 import { createGameStateMachine, gameStateMachine } from './game-state-machine';
 import { controls } from '@/core/controls';
 import { updateGlobalParticles } from "./game/game-particle";
-import { introState } from './game-states/intro.state';
+import { finalState } from './game-states/final.state';
+import { intro2State } from './game-states/intro.state copy';
 
 
 export let appSprite: HTMLImageElement;
@@ -25,11 +26,17 @@ export const styleBody =
 document.body.style.cssText = styleBody;
 
 
-createGameStateMachine(introState);
-//createGameStateMachine(menuState);
-//createGameStateMachine(gameState);
-//createGameStateMachine(summaryState);
-// createGameStateMachine(completedState);
+createGameStateMachine(intro2State);
+// createGameStateMachine(menu2State);
+// createGameStateMachine(repairState);
+// createGameStateMachine(nfzGameState); //gameState
+// createGameStateMachine(playState);
+//   createGameStateMachine(finalState);
+
+  // obsolete
+//createGameStateMachine(introState);
+// createGameStateMachine(defeatedState);
+// createGameStateMachine(menuState);
 
 const runApp = async (image: HTMLImageElement) => {
 
@@ -40,7 +47,8 @@ const runApp = async (image: HTMLImageElement) => {
   const delta = (currentTime - previousTime); // milisegundos
 
   if (delta >= interval) {
-    previousTime = currentTime - (delta % interval);
+    // previousTime = currentTime - (delta % interval) / 2; // Slow time
+    previousTime = currentTime - (delta % interval); // Normal time
 
     controls.queryController();
     drawEngine.context.clearRect(0, 0, drawEngine.canvasWidth, drawEngine.canvasHeight);

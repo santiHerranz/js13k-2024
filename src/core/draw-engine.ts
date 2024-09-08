@@ -25,6 +25,7 @@ class DrawEngine {
     context.textAlign = textAlign;
     context.strokeStyle = 'black';
     context.lineWidth = 8;
+    context.miterLimit = 4;
     context.textBaseline = 'middle';
     context.fillStyle = color;
     context.strokeText(text, x, y);

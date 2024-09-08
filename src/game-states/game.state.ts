@@ -3,7 +3,6 @@ import { State } from '@/core/state';
 import { drawEngine } from '@/core/draw-engine';
 import { controls } from '@/core/controls';
 import { gameStateMachine } from '@/game-state-machine';
-import { menuState } from '@/game-states/menu.state';
 import { Quadtree } from '@/quadtree/Quadtree';
 import { Rectangle } from '@/quadtree/Rectangle';
 import { Circle } from '@/quadtree/Circle';
@@ -11,7 +10,7 @@ import { Line } from '@/quadtree/Line';
 import { Indexable } from '@/quadtree/types';
 import { Vector } from '@/core/vector';
 import { manageUnitsCollision as manageUnitCollision } from '@/collisionManager';
-import { debounce, PI, rand, randInt, Timer } from '@/utils';
+import { PI, rand, randInt, Timer } from '@/utils';
 import { inputMouse } from '@/core/input-mouse';
 import { Unit } from '@/game/unit';
 import { GameObject } from '@/game-object';
@@ -20,7 +19,6 @@ import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL, createBullet } from '@/game/g
 import { PLAYER_SHOOT_PATTERN_MODES } from './game-config';
 import { Bullet } from '@/game/unit.bullet';
 import { Explosion } from '@/game/unit.explosion';
-import { summaryState } from './summary.state';
 import { colorShadow, debug, GameConfig, transparent } from './game-config';
 import { sound } from '@/core/sound';
 import { SND_ARROW_SHOOT, SND_BIG_EXPLOSION, SND_COIN, SND_DEATH, SND_EXPLOSION, SND_HIGHSCORE, SND_TICTAC } from '@/game/game-sound';
@@ -29,12 +27,13 @@ import { defaultExplosionTime, Fireball } from '@/game/unit-fireball';
 import { Coin, COIN_YELLOW, COIN_RED, COIN_BLUE, COIN_TOUCHED } from '@/game/game-coin';
 import { time } from '@/index';
 import { globalParticles } from '@/game/game-particle';
-import { completedState } from './completed.state';
 import { Collector } from '@/game/game-collector';
 import { Label } from '@/game/game-label';
 import { CollectibleFactory } from '@/game/game-collectible';
 import { Bomb } from '@/game/game.bomb';
-import { introState } from './intro.state';
+import { finalState } from './final.state';
+import { repairState } from './repair.state';
+import { menu2State } from './menu.state copy';
 
 let magicOffset = 100;
 
@@ -62,6 +61,7 @@ const ENEMY_PATH = [
 ];
 
 class GameState implements State {
+
 
   private canvas: HTMLElement | null = document.getElementById('c2d');
 
@@ -162,6 +162,10 @@ class GameState implements State {
 
   private getTeamBullets(team: TEAM) {
     return this.bullets.filter(f => f.team == team);
+  }
+
+  repairPlayer() {
+    GameConfig.playerDiamond -= GameConfig.repairCost;
   }
 
   onEnter() {
@@ -276,10 +280,14 @@ class GameState implements State {
       setTimeout(() => {
         sound(SND_HIGHSCORE);
 
-        completedState.score = this.score;
-        completedState.maxScore = this.stats.maxScoreAvailable;
+        // completedState.score = this.score;
+        // completedState.maxScore = this.stats.maxScoreAvailable;
 
-        gameStateMachine.setState(completedState);
+        // gameStateMachine.setState(completedState);
+
+        finalState.result.status = 1;
+        gameStateMachine.setState(finalState);
+        
       }, 5000);
 
     }
@@ -371,7 +379,9 @@ class GameState implements State {
 
         if (unit.team == TEAM_A) {
           setTimeout(() => {
-            gameStateMachine.setState(summaryState);
+            // gameStateMachine.setState(summaryState);
+            gameStateMachine.setState(repairState);
+
           }, 2000);
         }
       });
@@ -682,6 +692,7 @@ class GameState implements State {
 
     [...this.units, ...this.bullets, ...this.coins, ...this.explosions, ...this.collectors]
       .forEach((item: any) => {
+        item.hits = Math.max(0,--item.hits);
         item._update(dt);
       });
 
@@ -781,8 +792,8 @@ class GameState implements State {
     }
 
     if (controls.isEscape) {
-      gameStateMachine.setState(menuState);
-      gameStateMachine.setState(introState);
+      gameStateMachine.setState(menu2State);
+      // gameStateMachine.setState(introState);
     }
 
     // CURSOR 
