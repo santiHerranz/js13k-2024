@@ -4,8 +4,11 @@ import { drawEngine } from '@/core/draw-engine';
 import { gameState } from './game.state';
 import { finalState } from './final.state';
 import { Button } from '@/core/button';
-import { buttonProps } from './intro.state copy';
-import { GameConfig } from './game-config';
+import { GameConfig } from '../game/game-config';
+
+
+const buttonProps = { x: 0, y: 0, w: 600, h: 150 };
+
 
 class RepairState extends BaseState {
 
@@ -15,7 +18,7 @@ class RepairState extends BaseState {
 
     this.menuButtons = [];
 
-    let repair = new Button(buttonProps, '100 💎', "", 100);
+    let repair = new Button(buttonProps, GameConfig.repairCost +' 💎');
     
     repair.enabled =  (GameConfig.playerDiamond >= GameConfig.repairCost);
 
@@ -30,7 +33,7 @@ class RepairState extends BaseState {
     };
     this.menuButtons.push(repair);
 
-    let skip = new Button(buttonProps, 'Skip', "", 100);
+    let skip = new Button(buttonProps, 'Skip');
     skip.clickAction = () => {
       finalState.result.status = -1;
       gameStateMachine.setState(finalState);

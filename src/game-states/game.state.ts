@@ -16,12 +16,13 @@ import { Unit } from '@/game/unit';
 import { GameObject } from '@/game-object';
 import { Shooter } from '@/game/unit.shooter';
 import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL, createBullet } from '@/game/game-weapons';
-import { PLAYER_SHOOT_PATTERN_MODES } from './game-config';
+import { PLAYER_SHOOT_PATTERN_MODES } from '../game/game-config';
 import { Bullet } from '@/game/unit.bullet';
 import { Explosion } from '@/game/unit.explosion';
-import { colorShadow, debug, GameConfig, transparent } from './game-config';
+import { GameConfig } from '../game/game-config';
+import { transparent } from "@/game/game-colors";
+import { colorShadow } from "@/game/game-colors";
 import { sound } from '@/core/sound';
-import { SND_ARROW_SHOOT, SND_BIG_EXPLOSION, SND_COIN, SND_DEATH, SND_EXPLOSION, SND_HIGHSCORE, SND_TICTAC } from '@/game/game-sound';
 import { GameMap, GameMapTheme } from '@/game/game-map';
 import { defaultExplosionTime, Fireball } from '@/game/unit-fireball';
 import { Coin, COIN_YELLOW, COIN_RED, COIN_BLUE, COIN_TOUCHED } from '@/game/game-coin';
@@ -34,6 +35,8 @@ import { Bomb } from '@/game/game.bomb';
 import { finalState } from './final.state';
 import { repairState } from './repair.state';
 import { menu2State } from './menu.state copy';
+import { debug } from '@/game/game-debug';
+import { SND_ARROW_SHOOT, SND_BIG_EXPLOSION, SND_COIN, SND_DEATH, SND_EXPLOSION, SND_HIGHSCORE, SND_TICTAC } from '@/game/game-sound';
 
 let magicOffset = 100;
 
@@ -105,6 +108,7 @@ class GameState implements State {
   enemyList: any;
 
   stats = { enemiesCreated: 0, kills: 0, killsGoal: 0, maxScoreAvailable: 0 };
+  autopilot: boolean = false;
 
 
   constructor() {
@@ -128,7 +132,7 @@ class GameState implements State {
   // INPUT CONTROLS
 
   mouseDrag() {
-    if (inputMouse.dragStart) {
+    if (!this.autopilot && !this.autopilot && inputMouse.dragStart) {
       let start = new Vector(inputMouse.dragStart.x, inputMouse.dragStart.y);
       let last = new Vector(inputMouse.lastX, inputMouse.lastY);
       let deltaMove = new Vector((start.x - last.x), (start.y - last.y));
@@ -143,7 +147,7 @@ class GameState implements State {
   }
 
   toucheMove() {
-    if (inputMouse.dragStart) {
+    if (!this.autopilot && inputMouse.dragStart) {
       let start = new Vector(inputMouse.dragStart.x, inputMouse.dragStart.y);
       let last = new Vector(inputMouse.lastX, inputMouse.lastY);
       let deltaMove = new Vector((start.x - last.x), (start.y - last.y));
@@ -220,7 +224,9 @@ class GameState implements State {
     let hh = drawEngine.canvasHeight / 2;
 
     let coinSize = new Vector(GameConfig.coinSize, GameConfig.coinSize);
-    this.collectorCoin = CollectibleFactory.createCollectible(COIN_RED, { position: new Vector(hw, 330), size: coinSize.clone().scale(1.5) });
+    this.collectorCoin = CollectibleFactory.createCollectible(COIN_RED, { position: new Vector(hw * 1.5, 290), size: coinSize.clone().scale(1.2) });
+    this.collectorCoin.showBall = this.collectorCoin.showNumber = this.collectorCoin.showShadow = false;
+
     this.collectors = [];
     this.collectors.push(this.collectorCoin);
 
@@ -228,9 +234,10 @@ class GameState implements State {
     const startPosition = new Vector(hw, hh + hh * .6);
     this.player = this.createPlayer(startPosition);
 
+    this.autopilot = false;
+
     this.enemySpawnTimer.set(GameConfig.enemySpawnTime);
     this.gameLevelTimer.set(0);
-
 
     if (GameConfig.levelCurrentIndex == 0) {
       const coinIntroList =
@@ -277,18 +284,15 @@ class GameState implements State {
       this.score += this.collectorCoin!.number;
       this.collectorCoin!.number = 0;
 
+      this.autopilot = true;
+
       setTimeout(() => {
         sound(SND_HIGHSCORE);
 
-        // completedState.score = this.score;
-        // completedState.maxScore = this.stats.maxScoreAvailable;
-
-        // gameStateMachine.setState(completedState);
-
         finalState.result.status = 1;
         gameStateMachine.setState(finalState);
-        
-      }, 5000);
+
+      }, 4000);
 
     }
 
@@ -297,32 +301,23 @@ class GameState implements State {
 
     if (this.gameLevelTimer.elapsed()) {
 
-      // Test
+      //   GameConfig.enemySpawnTime = .5;
+      //   GameConfig.playerShootPattern = 1;
+      //   GameConfig.playerShootCoolDownValue = .2;
+      //   GameConfig.playerBulletSize = 8;
+      //   GameConfig.playerBulletDamagePoints = 50;
+      //   GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+
       switch (1 + GameConfig.levelCurrentIndex) {
-        // case 1:
-        //   GameConfig.enemySpawnTime = 1;
-        //   GameConfig.playerShootPattern = 0;
-        //   GameConfig.playerShootCoolDownValue = .2;
-        //   GameConfig.playerBulletSize = 10;
-        //   GameConfig.playerBulletDamagePoints = 30;
-        //   GameConfig.playerBulletType = BULLET_TYPE_BULLET;
-        //   break;
-        // case 2:
-        //   GameConfig.enemySpawnTime = .5;
-        //   GameConfig.playerShootPattern = 1;
-        //   GameConfig.playerShootCoolDownValue = .2;
-        //   GameConfig.playerBulletSize = 8;
-        //   GameConfig.playerBulletDamagePoints = 50;
-        //   GameConfig.playerBulletType = BULLET_TYPE_BULLET;
-        //   break;
-        // case 3:
-        //   GameConfig.enemySpawnTime = .3;
-        //   GameConfig.playerShootPattern = 2;
-        //   GameConfig.playerShootCoolDownValue = .1;
-        //   GameConfig.playerBulletSize = 10;
-        //   GameConfig.playerBulletDamagePoints = 50;
-        //   GameConfig.playerBulletType = BULLET_TYPE_BULLET;
-        //   break;
+        case 1:
+          setPlayerPropertyValue([1.2, 0, .2, 10, 30]);
+          break;
+        case 2:
+          setPlayerPropertyValue([1, 1, .15, 12, 50]);
+          break;
+        case 3:
+          setPlayerPropertyValue([.8, 2, .08, 12, 50]);
+          break;
 
         // case 3:
         //   GameConfig.enemySpawnTime = 1;
@@ -340,12 +335,12 @@ class GameState implements State {
           GameConfig.playerBulletSize = rand(4, 15);
           GameConfig.playerBulletSpeed = rand(10, 20);
 
-          GameConfig.playerShootPattern = randInt(0, PLAYER_SHOOT_PATTERN_MODES.length-1);
+          GameConfig.playerShootPattern = randInt(0, PLAYER_SHOOT_PATTERN_MODES.length - 1);
 
           const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
 
           GameConfig.playerShootCoolDownValue = currentMode.cooldown; // rand(.001, .1);
-          GameConfig.playerShootSpreadAngle = currentMode.spreadAngle ;  //randInt(10, 30);
+          GameConfig.playerShootSpreadAngle = currentMode.spreadAngle;  //randInt(10, 30);
           break;
       }
 
@@ -424,9 +419,6 @@ class GameState implements State {
         startPosition.add(new Vector(hw * (leftOrRight == 1 ? -1 : 1) * 1.2, enemyHeightSpawnPosition)); // 
 
         let value = this.getEnemyNextValue(); // coinValues[Math.floor(this.stats.enemiesCreated % coinValues.length-1)];
-
-        // TODO not all enemies drop coin
-        value = 0;
 
         let enemy = this.enemySpawn(startPosition, sizeBase, leftOrRight, value);
 
@@ -541,6 +533,10 @@ class GameState implements State {
           this.collisionTree.insert(item);
         });
       manageUnitCollision(useCase, dt);
+
+      // DRAW QUADTREE
+      debug.showQuadtree && drawEngine.drawQuadtree(this.collisionTree, drawEngine.context);
+
     });
 
 
@@ -594,10 +590,14 @@ class GameState implements State {
 
     const deltaMove = 2.5;
     let move = { h: 0, v: 0 };
-    move.h += controls.isLeft ? -deltaMove : 0;
-    move.h += controls.isRight ? deltaMove : 0;
-    move.v += controls.isUp ? -deltaMove * .8 : 0;
-    move.v += controls.isDown ? deltaMove * .8 : 0;
+    if (!this.autopilot) {
+      move.h += controls.isLeft ? -deltaMove : 0;
+      move.h += controls.isRight ? deltaMove : 0;
+      move.v += controls.isUp ? -deltaMove * .8 : 0;
+      move.v += controls.isDown ? deltaMove * .8 : 0;
+    } else {
+      move.v += -deltaMove * 0.4;
+    }
 
 
     // MOVE COINS
@@ -681,7 +681,7 @@ class GameState implements State {
 
 
       // Player Constraint move area
-      if (item.team == TEAM_A) {
+      if (item.team == TEAM_A && !this.autopilot) {
         this.playerPositionAreaConstraint(item);
       }
 
@@ -692,15 +692,12 @@ class GameState implements State {
 
     [...this.units, ...this.bullets, ...this.coins, ...this.explosions, ...this.collectors]
       .forEach((item: any) => {
-        item.hits = Math.max(0,--item.hits);
+        item.hits = Math.max(0, --item.hits);
         item._update(dt);
+
+
       });
 
-    /////////////////////////////
-    // DRAW QUADTREE
-
-    // drawEngine.context.beginPath();
-    // drawEngine.drawQuadtree(this.collisionTree, drawEngine.context);
 
     /////////////////////////////
     // DRAW OBJECTS
@@ -743,14 +740,12 @@ class GameState implements State {
     /////////////////////////////
     // DRAW HEADER
 
-    drawEngine.drawText('' + time.toFixed(2), 30, drawEngine.canvasWidth * .95, 40, 'white', 'right');
+    // drawEngine.drawText('' + time.toFixed(2), 30, drawEngine.canvasWidth * .95, 40, 'white', 'right');
 
     // drawEngine.drawText('bullets:' + this.bullets.length, 30, drawEngine.canvasWidth * .95, 80, 'white', 'right');
     // drawEngine.drawText('' + dt.toFixed(2), 28, drawEngine.canvasWidth * .95, 40);
-    drawEngine.drawText(`Level : ${1 + GameConfig.levelCurrentIndex} of ${GameConfig.levelEnemyCount.length}`, 50, 10, 50, 'white', 'left');
+    // drawEngine.drawText(`Level : ${1 + GameConfig.levelCurrentIndex} of ${GameConfig.levelEnemyCount.length}`, 50, 10, 50, 'white', 'left');
 
-    if (time < 10)
-      drawEngine.drawText(`${HINTS[0]}`, 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
     // drawEngine.drawText('coins:' + this.coins.length, 40, drawEngine.canvasWidth / 2, 150)
     // drawEngine.drawText('explo:' + this.explosions.length, 40, drawEngine.canvasWidth / 2, 200)
     // drawEngine.drawText('shakeForce:' + this.shakeForce, 40, drawEngine.canvasWidth / 2, 250)
@@ -763,7 +758,11 @@ class GameState implements State {
     // let message = `${this.stats.kills} of ${this.stats.killsGoal}`;
     // message += ` (${this.getEnemies().length}/${GameConfig.levelEnemyMaxCount.toFixed(0)})`;
 
-    drawEngine.drawText(`Enemies: ${this.stats.killsGoal - this.stats.kills} of ${this.stats.killsGoal}`, 40, drawEngine.canvasWidth * .95, 270, 'white', 'right');
+    if (time < 10)
+      drawEngine.drawText(`${HINTS[0]} of ${GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex]}`, 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
+
+
+    // drawEngine.drawText(`Enemies: ${this.stats.killsGoal - this.stats.kills} of ${this.stats.killsGoal}`, 60, drawEngine.canvasWidth * .95, 350, 'white', 'right');
     // drawEngine.drawText(`Points: ${this.stats.maxScoreAvailable} max`, 40, drawEngine.canvasWidth * .95, 320, 'white', 'right');
     // drawEngine.drawText(`Collector: ${this.collectorCoin?.number}`, 40, drawEngine.canvasWidth * .95, 370, 'white', 'right');
 
@@ -778,7 +777,7 @@ class GameState implements State {
     // drawEngine.drawText(`particles: ${globalParticles.length}` , 40, drawEngine.canvasWidth * .5, 200, 'white', 'center');
 
 
-    drawEngine.drawText('score: ' + this.score, 60, drawEngine.canvasWidth * .95, 195, 'yellow', 'right');
+    // drawEngine.drawText('score: ' + this.score, 60, drawEngine.canvasWidth * .95, 505, 'yellow', 'right');
 
 
     if (controls.DeleteKey) {
@@ -796,6 +795,8 @@ class GameState implements State {
       // gameStateMachine.setState(introState);
     }
 
+    menu2State.renderScoreBar();
+
     // CURSOR 
     drawEngine.drawCircle(inputMouse.pointer.Position, 60, { stroke: transparent, fill: colorShadow });
 
@@ -803,11 +804,6 @@ class GameState implements State {
     !debug.showWires && globalParticles.forEach(_ => _.draw(drawEngine.context));
 
 
-  }
-
-  metodoSinRebotes(props: { target: any; Position: Vector; text: string; }): void {
-    console.log('llamada sin rebotes');
-    this.createLabel(props.Position, props.text);
   }
 
 
@@ -829,50 +825,6 @@ class GameState implements State {
     }
 
     return { intent, list, maxScoreAvailable };
-  }
-
-  private createEnemyValues(maxScore: number = 1) {
-
-    console.log('maxScore desired: ' + maxScore);
-
-    let list: number[] = [];
-    let maxScoreAvailable = 0;
-    let intent = 0;
-    const initialValue: number = 13;
-
-    do {
-
-      list = [];
-
-      while (list.reduce((a: number, c: number) => {
-        if (a + c == 13) { c = 0; return a; } // Avoid acumulated 13
-        return a + c;
-      }, initialValue) < maxScore) {
-        let value = this.coinValues[(randInt(0, this.coinValues.length))];
-        list.push(value);
-      }
-
-      maxScoreAvailable = list.reduce((a: number, c: number) => a + c, 0);
-
-    } while (++intent < 1000 && maxScoreAvailable != maxScore);
-
-    console.log('intent ' + intent + '. max score available: ' + maxScoreAvailable);
-    console.log('list: ' + JSON.stringify(list));
-
-    // the fun one
-    list.push(13);
-
-    // shuffle list
-    list = list
-      .map(value => ({ value, sort: Math.random() }))
-      .sort((a, b) => a.sort - b.sort)
-      .map(({ value }) => value);
-
-    // list = [5, 8, 5, 8, 5, 8, 5, 8, 5, 8, 5, 8]
-
-    return { intent, list, maxScoreAvailable };
-
-
   }
 
 
@@ -901,7 +853,7 @@ class GameState implements State {
     if (leftOrRight)
       enemy.path = enemy.path.reverse();
 
-    // Start path follower
+    // Start following path
     enemy.movePosition = enemy.path[enemy.currentPoint];
 
     return enemy;
@@ -933,9 +885,9 @@ class GameState implements State {
 
   private shooterControlMode(shooter: Shooter) {
     // Auto
-    // return true;
+    return true;
     // Manual
-    return shooter.team == TEAM_A && !GameConfig.playerAutoShoot ? controls.isSpace : true;
+    // return shooter.team == TEAM_A && !GameConfig.playerAutoShoot ? controls.isSpace : true;
 
   }
 
@@ -1055,7 +1007,7 @@ class GameState implements State {
     let size = Vector.createSize(GameConfig.coin13Size);
 
     let bomb = new Bomb({ position, size }, '#000');
-
+    bomb.number = 13;
     bomb.maxHealthPoints = 10000;
 
     bomb.maxVelocity = GameConfig.bombMaxVelocity;
@@ -1122,6 +1074,7 @@ class GameState implements State {
 
       // Collect points
       collector.number += coin.number;
+      GameConfig.playerCoins += coin.number;
 
       console.log('Collected: +' + coin.number + ' = ' + collector.number);
 
@@ -1359,6 +1312,15 @@ class GameState implements State {
 
 export const gameState = new GameState();
 
+
+function setPlayerPropertyValue(values: number[] = [1, 0, .1, 10, 30], type = BULLET_TYPE_BULLET) {
+  GameConfig.enemySpawnTime = values[0]; // 1
+  GameConfig.playerShootPattern = values[1]; // 0
+  GameConfig.playerShootCoolDownValue = values[2]; // .1
+  GameConfig.playerBulletSize = values[3]; // 10
+  GameConfig.playerBulletDamagePoints = values[4]; // 30
+  GameConfig.playerBulletType = type; //BULLET_TYPE_BULLET;
+}
 
 function enemyTargetDesignation(Units: Shooter[]) {
 

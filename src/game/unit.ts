@@ -1,8 +1,9 @@
 import { drawEngine } from "@/core/draw-engine";
 import { Vector } from "@/core/vector";
 import { GameObject } from "@/game-object";
-import { debug, colorShadow, transparent } from "@/game-states/game-config";
 import { time } from "@/index";
+import { colorShadow } from "./game-colors";
+import { debug } from "./game-debug";
 
 export class Unit extends GameObject {
 

@@ -1,6 +1,5 @@
 import { time } from "@/index";
 import { Vector } from "./vector";
-import { transparent } from "@/game-states/game-config";
 
 class DrawEngine {
 

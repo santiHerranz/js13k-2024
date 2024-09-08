@@ -3,7 +3,7 @@ import { Vector } from "@/core/vector";
 import { Unit, UnitProperties } from "./unit";
 import { TEAM_A } from "@/game-states/game.state";
 import { time } from "@/index";
-import { debug } from "@/game-states/game-config";
+import { debug } from "./game-debug";
 
 
 // export type COIN_TYPE = 'yellow' | 'red' | 'blue' | 'green';

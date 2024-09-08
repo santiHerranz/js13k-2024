@@ -1,12 +1,9 @@
 import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL } from "@/game/game-weapons";
 import { PI, Timer } from "@/utils";
-import { scrollSpeed } from "./game.state";
+import { scrollSpeed } from "../game-states/game.state";
 
 
-export const colorShadow: string = 'rgb(10,10,10,0.2)';
-export const transparent: string = 'transparent'; 
-
-export const backButton = {label: '⏪', fontSize: 100};
+export const backButton = {label: '⏪', fontSize: 100, posY: 150};
 export const gameIcons = {heart: '🧡', coin: '🟡', diamond: '💎'};
 
 
@@ -31,8 +28,8 @@ export const GameConfig = {
   
   playerCoins: 0,
   playerHearts: 0,
-  playerDiamond: 90,
-  repairCost: 100,
+  playerDiamond: 1,
+  repairCost: 1,
 
   playerUnits: 1,
 
@@ -78,7 +75,7 @@ export const GameConfig = {
   
   // levelEnemyCount: [3, 5, 8, 15, 20, 35, 50, 19, 150, 240, 380, 620, 1000], // exponencial
   // levelEnemyCount: [5, 8, 15, 20, 35], // , 50, 19, 150, 240, 350],
-  levelEnemyCount: [8, 15, 20, 100], // , 50, 19, 150, 240, 350],
+  levelEnemyCount: [8,10,15,20,27,36,50,66,90,120,160,220,300], // , 50, 19, 150, 240, 350],
   levelCurrentIndex: 0,
 
   levelIndexUnlocked: [0], //,2,3,4,5
@@ -94,17 +91,5 @@ export const GameConfig = {
   scrollSpeed: .2,
   bombCountDownSecs: 5,
   bombShake: 100,
-};
-
-export const debug = {
-  godMode:1,
-  showWires: 0,
-  showMoveWires: 0,
-  showTargetWires: 0,
-  showQuadtree: 0,
-  showVelocity: 0,
-  showButtonBounds: 0,
-  damageMessages: 1,
-  enemyPaused: 0,
 };
 

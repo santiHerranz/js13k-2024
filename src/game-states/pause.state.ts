@@ -1,40 +1,43 @@
-import { BaseState } from './base.state';
-import { buttonProps } from './intro.state copy';
-import { gameStateMachine } from '@/game-state-machine';
-import { gameState } from './game.state';
-import { Button } from '@/core/button';
-import { menu2State } from './menu.state copy';
-
-class PauseState extends BaseState {
-
-  onEnter() {
-
-    this.menuButtons = [];
-
-    const resume = new Button(buttonProps, 'RESUME', "", 100);
-    resume.clickAction = () => {
-      // gameStateMachine.setState(nfzGameState);
-      gameStateMachine.setState(gameState);
-    };
-    this.menuButtons.push(resume);
+// import { BaseState } from './base.state';
+// import { gameStateMachine } from '@/game-state-machine';
+// import { gameState } from './game.state';
+// import { Button } from '@/core/button';
+// import { menu2State } from './menu.state copy';
 
 
-    const back = new Button(buttonProps, 'Exit', "", 100);
-    back.clickAction = () => {
-      gameStateMachine.setState(menu2State);
-    };
-    this.menuButtons.push(back);
+// const def = { w: 350, h: 120 };
+// const buttonProps = { x: 0, y: 0, w: def.w, h: def.h };
 
-    // Call super after button created
-    super.onEnter();
+// class PauseState extends BaseState {
+
+//   onEnter() {
+
+//     this.menuButtons = [];
+
+//     const resume = new Button(buttonProps, 'RESUME', "", 100);
+//     resume.clickAction = () => {
+//       // gameStateMachine.setState(nfzGameState);
+//       gameStateMachine.setState(gameState);
+//     };
+//     this.menuButtons.push(resume);
 
 
-  }
+//     const back = new Button(buttonProps, 'Exit', "", 100);
+//     back.clickAction = () => {
+//       gameStateMachine.setState(menu2State);
+//     };
+//     this.menuButtons.push(back);
 
-  onUpdate(dt:number) {
-    super.onUpdate(dt);
-  }
+//     // Call super after button created
+//     super.onEnter();
 
-}
 
-export const pauseState = new PauseState();
+//   }
+
+//   onUpdate(dt:number) {
+//     super.onUpdate(dt);
+//   }
+
+// }
+
+// export const pauseState = new PauseState();

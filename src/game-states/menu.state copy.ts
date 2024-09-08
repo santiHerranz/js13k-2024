@@ -3,29 +3,32 @@ import { gameStateMachine } from '@/game-state-machine';
 import { Button } from '@/core/button';
 import { drawEngine } from '@/core/draw-engine';
 import { Vector } from '@/core/vector';
-import { buttonProps, intro2State } from './intro.state copy';
-import { GameConfig, backButton } from './game-config';
-import { gameState } from './game.state';
+import { intro2State } from './intro.state copy';
+import { GameConfig, backButton } from '../game/game-config';
+import { playState } from './play.state';
+import {  time } from '@/index';
 
 const prefix = 'Level ';
 
+const buttonProps = { x: 0, y: 0, w: 400, h: 150 };
+
+
 class Menu2State extends BaseState {
 
-  private readonly levelOptions = [
-    {text:prefix + '1', coord:[.3,.3]},
-    {text:prefix + '2', coord:[.3,.45]},
-    {text:prefix + '3', coord:[.3,.6]},
-    {text:prefix + '4', coord:[.3,.75]},
-    {text:prefix + '5', coord:[.7,.3]},
-    {text:prefix + '6', coord:[.7,.45]},
-    {text:prefix + '7', coord:[.7,.6]},
-    {text:prefix + '8', coord:[.7,.75]},
-  ];
 
+  // LEVEL TABLE COORDS
+  private readonly levelOptions = Array.from({ length: 13 }, (_, i) => {
+    const row = Math.floor(i / 2);
+    const col = i % 2;
+    return {
+      text: prefix + (i + 1),
+      coord: i < 12 ? [0.28 + 0.44 * col, 0.22 + 0.1 * row] : [0.5, 0.81]
+    };
+  });
 
   onEnter() {
 
-    this.color = '#1F3BA6';
+    // this.color = '#1F3BA6';
 
 
     this.menuButtons = [];
@@ -33,15 +36,15 @@ class Menu2State extends BaseState {
     this.levelOptions 
       .forEach((level, index) => {
 
-        const btn = new Button(buttonProps, level.text, "", 100);
+        const btn = new Button(buttonProps, level.text);
         btn.index = index;
         btn.clickAction = () => {
 
           GameConfig.levelCurrentIndex = index;
 
           // TODO
-          // gameState.backState = this;
-          gameStateMachine.setState(gameState);
+          playState.backState = this;
+          gameStateMachine.setState(playState);
         };
         this.menuButtons.push(btn);
       });
@@ -68,9 +71,17 @@ class Menu2State extends BaseState {
 
   }
 
-  // onUpdate(dt: number) {
-  //   super.onUpdate(dt);
-  // }
+  onUpdate(dt: number) {
+
+    super.onUpdate(dt);
+
+    drawEngine.context.save();
+    intro2State.sceneAnimation(time);
+    drawEngine.context.restore();
+
+    this.menuRender();
+
+  }
 
 
   /// CUSTOM RENDER MENU IN GAME
@@ -100,7 +111,7 @@ class Menu2State extends BaseState {
 
     if (menu.name == 'back') {
       menu.width = 160;
-      return new Vector(drawEngine.canvasWidth * .1, 150);
+      return new Vector(drawEngine.canvasWidth * .1, backButton.posY);
     }
 
     let info = this.levelOptions.filter(f => f.text == menu.text)[0];

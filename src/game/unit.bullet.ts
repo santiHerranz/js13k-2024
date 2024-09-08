@@ -1,7 +1,7 @@
 import { Vector } from "@/core/vector";
 import { PI } from "@/utils";
 import { Unit } from "./unit";
-import { transparent } from "@/game-states/game-config";
+import { transparent } from "./game-colors";
 
 
 export class Bullet extends Unit {

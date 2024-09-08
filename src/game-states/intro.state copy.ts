@@ -1,27 +1,23 @@
 import { gameStateMachine } from "@/game-state-machine";
 import { BaseState } from "./base.state";
 import { drawEngine } from "@/core/draw-engine";
-import { time } from "@/index";
+import { canvas, time } from "@/index";
 import { Button } from "@/core/button";
 import { inputMouse } from "@/core/input-mouse";
-import { GameConfig } from "./game-config";
+import { GameConfig } from "../game/game-config";
 import { menu2State } from "./menu.state copy";
 
-export const def = { w: 600, h: 120 };
-export const buttonProps = { x: 0, y: 0, w: def.w, h: def.h };
 
 const xCenter = drawEngine.context.canvas.width / 2;
 
 class Intro2State extends BaseState {
-
-  private canvas: HTMLElement | null = document.getElementById('c2d');
 
 
   onEnter() {
 
     this.menuButtons = [];
 
-    let start = new Button(buttonProps, 'START', "", 100);
+    let start = new Button({ x: 0, y: 0, w: 450, h: 150 }, 'START');
     start.clickAction = () => {
       menu2State.backState = this;
       gameStateMachine.setState(menu2State);
@@ -55,6 +51,7 @@ class Intro2State extends BaseState {
     drawEngine.drawText(GameConfig.title, 250, xCenter, 450);
     drawEngine.drawText(GameConfig.subtitle, 80, xCenter, 620);
 
+    drawEngine.drawText('@santiHerranz for JS13K 2024', 40, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .9, '#eee', 'center');
 
     super.menuRender();
   }
@@ -67,14 +64,18 @@ class Intro2State extends BaseState {
     var C = Math.cos;
 
     // this.canvas!.setAttribute('style', 'background-color: ' + R(255, 255, 255, 1) + ';');
-    this.canvas!.setAttribute('style', 'background-color: #fff;');  //#124875 // #188fa8  
+    canvas!.setAttribute('style', 'background-color: #fff;');  //#124875 // #188fa8  
 
     let i, w, X, Y, j, r;
 
-    X = drawEngine.canvasWidth / 2 + .2 * (drawEngine.canvasWidth / 2); //  - inputMouse.pointer.Position.x
-    Y = drawEngine.canvasHeight / 2 + .2 * (drawEngine.canvasHeight / 2); //  - inputMouse.pointer.Position.y
+    X = drawEngine.canvasWidth / 2 + .2 * (drawEngine.canvasWidth / 2 - inputMouse.pointer.Position.x); //
+    Y = drawEngine.canvasHeight / 2 + .2 * (drawEngine.canvasHeight / 2 - inputMouse.pointer.Position.y); //  
 
-    const gradient = x.createLinearGradient(drawEngine.canvasWidth / 2, 0, drawEngine.canvasWidth / 2, drawEngine.canvasHeight);
+    const planeTilt = Math.sin(time)*50;
+    const playerTilt = 50 * (drawEngine.canvasWidth / 2 - X)/(drawEngine.canvasWidth / 2);
+    
+
+    const gradient = x.createLinearGradient(drawEngine.canvasWidth / 2 - planeTilt  - playerTilt, 0, drawEngine.canvasWidth / 2 + planeTilt + playerTilt, drawEngine.canvasHeight);
 
     let horit = .85 + .0001 * (drawEngine.canvasHeight / 2 - Y);
 

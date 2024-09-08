@@ -2,7 +2,7 @@ import { rand } from "@/utils";
 import { Bullet } from "./unit.bullet";
 import { Vector } from "@/core/vector";
 import { Unit } from "./unit";
-import { debug } from "../game-states/game-config";
+import { debug } from "./game-debug";
 import { globalParticles } from './game-particle';
 import { Particle } from "./game-particle";
 

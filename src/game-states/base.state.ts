@@ -7,7 +7,7 @@ import { SND_BTN_CLICK, SND_BTN_HOVER } from '@/game/game-sound';
 import { Button } from '@/core/button';
 import { inputMouse } from '@/core/input-mouse';
 import { Vector } from '@/core/vector';
-import { GameConfig, gameIcons } from './game-config';
+import { GameConfig, gameIcons } from '../game/game-config';
 
 export type MenuOption = { title: string; action: Function };
 
@@ -30,8 +30,8 @@ export class BaseState implements State {
 
 
   refY = drawEngine.canvasHeight / 2;
-  menuOptionHeigth = 120;
-  menuOptionMarginHeigth = 20;
+  menuOptionHeigth = 150;
+  menuOptionMarginHeigth = 30;
 
   // Calculate total offset for buttons
   get offsetRefY() {
@@ -121,8 +121,8 @@ export class BaseState implements State {
     drawEngine.drawText(`Level : ${1 + GameConfig.levelCurrentIndex}`, 50, drawEngine.canvasWidth * .6, drawEngine.canvasHeight * .1 + 10, 'white', 'center');
 
     [
-      { icon: gameIcons.heart, value: GameConfig.playerHearts, pos: .72 },
-      { icon: gameIcons.coin, value: GameConfig.playerCoins, pos: .81 },
+      // { icon: gameIcons.heart, value: GameConfig.playerHearts, pos: .72 },
+      { icon: gameIcons.coin, value: GameConfig.playerCoins, pos: .75 },
       { icon: gameIcons.diamond, value: GameConfig.playerDiamond, pos: .9 },
     ].forEach((item) => {
       const position = new Vector(drawEngine.canvasWidth * item.pos, drawEngine.canvasHeight * .1);

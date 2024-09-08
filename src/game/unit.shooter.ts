@@ -6,7 +6,8 @@ import { drawEngine } from "@/core/draw-engine";
 import { TEAM_A, TEAM_B } from "@/game-states/game.state";
 import { BULLET_TYPE, BULLET_TYPE_BULLET } from "./game-weapons";
 import { imageSource, time } from "@/index";
-import { debug, transparent } from "@/game-states/game-config";
+import { transparent } from "./game-colors";
+import { debug } from "./game-debug";
 
 export class Shooter extends Unit {
 

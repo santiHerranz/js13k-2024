@@ -3,8 +3,7 @@ import { gameStateMachine } from '@/game-state-machine';
 import { drawEngine } from '@/core/draw-engine';
 import { Button } from '@/core/button';
 import { lerp } from '@/utils';
-import { GameConfig } from './game-config';
-import { buttonProps } from './intro.state copy';
+import { GameConfig } from '../game/game-config';
 import { menu2State } from './menu.state copy';
 
 
@@ -21,7 +20,7 @@ class FinalState extends BaseState {
 
     this.menuButtons = [];
 
-    const back = new Button(buttonProps, 'Continue', "", 100);
+    const back = new Button({ x: 0, y: 0, w: 600, h: 150 }, 'Continue');
     back.clickAction = () => {
       gameStateMachine.setState(menu2State);
     };
@@ -79,13 +78,13 @@ class FinalState extends BaseState {
     let row = 0, rowHeight = 80;
 
     drawEngine.drawText(this.result.title, 200, drawEngine.canvasWidth / 2, refY + rowHeight * row++, this.result.color, 'center');
-    row++;
-    drawEngine.drawText(`Level Hard`, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
-    drawEngine.drawText(`Score 1000`, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
-    drawEngine.drawText(`Destroy 90% enemies! ` + this.result.icon, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
-    drawEngine.drawText(`Coins +135`, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
-    row++;
-    row++;
+    row+=2;
+    drawEngine.drawText(`Level ` + (GameConfig.levelCurrentIndex + 1), 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
+    // drawEngine.drawText(`Score 1000`, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
+    drawEngine.drawText(`Destroy all enemies! ` + this.result.icon, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
+    // drawEngine.drawText(`Coins +135`, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
+    row+=3;
+
     super.menuRender(refY + rowHeight * row);
 
   }

@@ -2,7 +2,9 @@ import { drawEngine } from "@/core/draw-engine";
 import { Vector } from "@/core/vector";
 import { Circle } from "@/quadtree/Circle";
 import { Indexable, NodeGeometry } from "@/quadtree/types";
-import { colorShadow, debug, transparent } from './game-states/game-config';
+import { transparent } from "./game/game-colors";
+import { colorShadow } from "./game/game-colors";
+import { debug } from "./game/game-debug";
 
 const excludeVerbose = ['bullet'];
 
