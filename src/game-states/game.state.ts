@@ -16,7 +16,7 @@ import { Unit } from '@/game/unit';
 import { GameObject } from '@/game-object';
 import { Shooter } from '@/game/unit.shooter';
 import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL, createBullet } from '@/game/game-weapons';
-import { PLAYER_SHOOT_PATTERN_MODES } from '../game/game-config';
+import { HINTS, PLAYER_SHOOT_PATTERN_MODES } from '../game/game-config';
 import { Bullet } from '@/game/unit.bullet';
 import { Explosion } from '@/game/unit.explosion';
 import { GameConfig } from '../game/game-config';
@@ -37,6 +37,7 @@ import { repairState } from './repair.state';
 import { menu2State } from './menu.state copy';
 import { debug } from '@/game/game-debug';
 import { SND_ARROW_SHOOT, SND_BIG_EXPLOSION, SND_COIN, SND_DEATH, SND_EXPLOSION, SND_HIGHSCORE, SND_TICTAC } from '@/game/game-sound';
+import { pauseState } from './pause.state';
 
 let magicOffset = 100;
 
@@ -47,20 +48,11 @@ export type TEAM = 1 | 2;
 export const TEAM_A: TEAM = 1;
 export const TEAM_B: TEAM = 2;
 
-export const scrollSpeed = new Vector(0, .2);
-
-
-const HINTS = [
-  "💀 DESTROY 70% EMENIES!",
-  // "  HINT: USE ARROW KEYS TO MOVE.",
-  // "  HINT: PRESS BACKSPACE TO UNDO.",
-  // "  HINT: PRESS R TO RESTART.",
-  // "  HINT: PRESS ENTER TO PAUSE."
-];
-
+const currentKillsGoalPercent = .7;
 
 const ENEMY_PATH = [
-  [new Vector(100, 300), new Vector(100, 1200), new Vector(1000, 1200), new Vector(1000, 300)],
+  [new Vector(100, 350), new Vector(100, 1200), new Vector(1000, 1200), new Vector(1000, 350)],
+  // [new Vector(-100, 1200), new Vector(1200, 350)],
 ];
 
 class GameState implements State {
@@ -89,7 +81,7 @@ class GameState implements State {
 
   playerAlive: boolean;
 
-  score: number;
+  levelScore:number = 0;
 
   shakeForce: number = 0;
 
@@ -102,13 +94,16 @@ class GameState implements State {
 
   enemySpawnTimer: Timer = new Timer(undefined);
 
+  hintTimer: Timer = new Timer(undefined);
+
   gameLevelTimer: Timer = new Timer(undefined);
   shootSoundColdDownTimer: Timer = new Timer(1);
   winCondition: boolean = false;
-  enemyList: any;
+  enemyValueList: any;
 
-  stats = { enemiesCreated: 0, kills: 0, killsGoal: 0, maxScoreAvailable: 0 };
+  stats = { enemiesCreated: 0, kills: 0, killsGoal: 0 };
   autopilot: boolean = false;
+  winTimeout: NodeJS.Timeout | undefined;
 
 
   constructor() {
@@ -116,7 +111,6 @@ class GameState implements State {
 
     this.playerAlive = false;
 
-    this.score = 0;
 
     this.gameMap = new GameMap(this.seed, GameMapTheme.sea);
     this.gameMap.speed = 2.5; // 0.096
@@ -169,10 +163,12 @@ class GameState implements State {
   }
 
   repairPlayer() {
-    GameConfig.playerDiamond -= GameConfig.repairCost;
+    GameConfig.playerScore -= GameConfig.repairCost;
   }
 
   onEnter() {
+
+    this.hintTimer.set(3);
 
     this.canvas!.setAttribute(
       "style",
@@ -193,39 +189,32 @@ class GameState implements State {
     this.bullets = [];
     this.coins = [];
     this.explosions = [];
-    this.enemyList = [];
+    this.enemyValueList = [];
     this.labels = [];
 
-    // reset score
-    this.score = 0;
+    // reset level score
+    this.levelScore = 0;
 
     // reset stats
     this.stats = {
       enemiesCreated: 0,
       kills: 0,
       killsGoal: 0, // * .8,
-      maxScoreAvailable: 0,
     };
 
 
-    // let data = this.createEnemyValues(GameConfig.levelCurrentValue);
-    let data = this.createEnemyCount(GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex]);
+    this.enemyValueList = this.createEnemyValueList(GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex]);
 
+    // Kill goal of enemies created
+    this.stats.killsGoal = this.enemyValueList.length * currentKillsGoalPercent;
 
-    this.enemyList = data.list;
-
-    // Kill 100% of enemies created
-    this.stats.killsGoal = data.list.length;
-
-    // Score max coin value created
-    this.stats.maxScoreAvailable = data.maxScoreAvailable;
 
     let hw = drawEngine.canvasWidth / 2;
     let hh = drawEngine.canvasHeight / 2;
 
     let coinSize = new Vector(GameConfig.coinSize, GameConfig.coinSize);
-    this.collectorCoin = CollectibleFactory.createCollectible(COIN_RED, { position: new Vector(hw * 1.5, 290), size: coinSize.clone().scale(1.2) });
-    this.collectorCoin.showBall = this.collectorCoin.showNumber = this.collectorCoin.showShadow = false;
+    this.collectorCoin = CollectibleFactory.createCollectible(COIN_RED, { position: new Vector(hw, 260), size: coinSize.clone().scale(1.6) });
+    this.collectorCoin.showBall = this.collectorCoin.showNumber = this.collectorCoin.showShadow = true;
 
     this.collectors = [];
     this.collectors.push(this.collectorCoin);
@@ -271,25 +260,33 @@ class GameState implements State {
 
   private winConditionCriteria() {
     // return this.collectorYellow!.number > 100;
-    return this.stats.kills >= this.stats.killsGoal;
+    return this.stats.kills >= this.stats.killsGoal && this.coins.length == 0;
   }
 
 
   onUpdate(dt: number) {
 
+    if (this.winCondition && !this.winConditionCriteria()) {
+      this.winCondition = false;
+      this.autopilot = false;
+      clearTimeout(this.winTimeout);
+    }
+
     if (!this.winCondition && this.winConditionCriteria()) {
       this.winCondition = true;
 
       // Score the rest
-      this.score += this.collectorCoin!.number;
+      this.levelScore += this.collectorCoin!.number;
       this.collectorCoin!.number = 0;
 
       this.autopilot = true;
 
-      setTimeout(() => {
+      this.winTimeout = setTimeout(() => {
         sound(SND_HIGHSCORE);
 
         finalState.result.status = 1;
+        finalState.result.kills = this.stats.kills;
+        finalState.result.score = this.levelScore;
         gameStateMachine.setState(finalState);
 
       }, 4000);
@@ -310,14 +307,22 @@ class GameState implements State {
 
       switch (1 + GameConfig.levelCurrentIndex) {
         case 1:
-          setPlayerPropertyValue([1.2, 0, .2, 10, 30]);
+          setPlayerPropertyValue([2.5, 0, .1, 10, 30]);
           break;
         case 2:
-          setPlayerPropertyValue([1, 1, .15, 12, 50]);
+          setPlayerPropertyValue([2, 1, .06, 12, 50]);
           break;
         case 3:
-          setPlayerPropertyValue([.8, 2, .08, 12, 50]);
-          break;
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+          setPlayerPropertyValue([.4, 2, .04, 12, 50]);
 
         // case 3:
         //   GameConfig.enemySpawnTime = 1;
@@ -330,13 +335,12 @@ class GameState implements State {
 
         default:
 
-          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
           GameConfig.playerSize = rand(30, 100);
+          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
           GameConfig.playerBulletSize = rand(4, 15);
           GameConfig.playerBulletSpeed = rand(10, 20);
 
           GameConfig.playerShootPattern = randInt(0, PLAYER_SHOOT_PATTERN_MODES.length - 1);
-
           const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
 
           GameConfig.playerShootCoolDownValue = currentMode.cooldown; // rand(.001, .1);
@@ -402,7 +406,7 @@ class GameState implements State {
 
 
     // ENEMY SPAWN
-    if (!debug.enemyPaused && this.enemySpawnTimer.elapsed() && this.enemyList.length > 0) {
+    if (!debug.enemyPaused && this.enemySpawnTimer.elapsed() && this.enemyValueList.length > 0) {
 
       let hw = drawEngine.canvasWidth / 2;
       let hh = drawEngine.canvasHeight / 2;
@@ -427,7 +431,7 @@ class GameState implements State {
 
 
       // if (this.getEnemies().length > 500)
-      this.enemySpawnTimer.set(GameConfig.enemySpawnTime);
+      this.enemySpawnTimer.set(this.getEnemies().length > 10 ? GameConfig.enemySpawnTime * 2 : GameConfig.enemySpawnTime);
     }
 
 
@@ -458,7 +462,7 @@ class GameState implements State {
 
             var isInRange = this.checkRange(unitA, unitB, unitA.damageRange);
             if (isInRange.a) {
-              debug.damageMessages && console.log(`unit to unit damage: ${unitB.damagePoints} / ${unitA.damagePoints}`);
+              // debug.damageMessages && console.log(`unit to unit damage: ${unitB.damagePoints} / ${unitA.damagePoints}`);
               // !debug.godMode && 
               unitA.applyDamage(unitB.damagePoints);
               unitB.applyDamage(unitA.damagePoints);
@@ -478,7 +482,7 @@ class GameState implements State {
             if (isInRange.a && explosion.damagePoints > 0) {
 
               // if (!(debug.godMode && unit.team == TEAM_A)) {
-              debug.damageMessages && console.log(`explosion to unit damage: ${explosion.damagePoints}`);
+              // debug.damageMessages && console.log(`explosion to unit damage: ${explosion.damagePoints}`);
               unit.applyDamage(explosion.damagePoints);
               // }
 
@@ -500,7 +504,7 @@ class GameState implements State {
             if (isInRange.a) {
 
               // if (!(debug.godMode && unit.team == TEAM_A)) {
-              debug.damageMessages && console.log(`bullet to unit damage: ${bullet.damagePoints}`);
+              // debug.damageMessages && console.log(`bullet to unit damage: ${bullet.damagePoints}`);
               unit.applyDamage(bullet.damagePoints);
               // }
               bullet.destroy();
@@ -523,7 +527,7 @@ class GameState implements State {
       // Bombs vs Player
       [...this.units.filter(f => f.type == 'bomb'), ...this.units.filter(f => f.team == TEAM_A)],
       // Coins vs coins
-      [...this.coins],
+      [...this.coins.filter(f => f.type != COIN_TOUCHED)],
     ];
 
     useCases.forEach((useCase) => {
@@ -756,10 +760,11 @@ class GameState implements State {
     //   drawEngine.drawText('' + this.currentMessage, 40, drawEngine.canvasWidth * .5, 120, 'white', 'center');
 
     // let message = `${this.stats.kills} of ${this.stats.killsGoal}`;
-    // message += ` (${this.getEnemies().length}/${GameConfig.levelEnemyMaxCount.toFixed(0)})`;
+    
+    drawEngine.drawText(`💀 ${GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] - this.stats.kills}`, 50, drawEngine.canvasWidth * .1, 200, 'white', 'center');
 
-    if (time < 10)
-      drawEngine.drawText(`${HINTS[0]} of ${GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex]}`, 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
+    if (!this.hintTimer.elapsed())
+      drawEngine.drawText(`💀 DESTROY `+ currentKillsGoalPercent*100 +`% EMENIES!`, 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
 
 
     // drawEngine.drawText(`Enemies: ${this.stats.killsGoal - this.stats.kills} of ${this.stats.killsGoal}`, 60, drawEngine.canvasWidth * .95, 350, 'white', 'right');
@@ -769,7 +774,7 @@ class GameState implements State {
 
     let currentHealthRatio = this.player!.healthPoints / this.player!.maxHealthPoints;
 
-    const healthBarProps = { x: drawEngine.canvasWidth * .2 - 200, y: 180, w: 400, h: 30 };
+    const healthBarProps = { x: drawEngine.canvasWidth * .9 - 200, y: 180, w: 200, h: 30 };
     drawEngine.drawRectangle(new Vector(healthBarProps.x, healthBarProps.y), new Vector(healthBarProps.w, healthBarProps.h), { fill: '#fff' });
     drawEngine.drawRectangle(new Vector(healthBarProps.x, healthBarProps.y), new Vector(healthBarProps.w * currentHealthRatio, healthBarProps.h), { fill: currentHealthRatio > .5 ? '#0f0' : '#f00' });
     // drawEngine.drawText('Health ' + this.player?.healthPoints.toFixed(0), 40, 18, 70, 'white', 'left');
@@ -791,7 +796,7 @@ class GameState implements State {
     }
 
     if (controls.isEscape) {
-      gameStateMachine.setState(menu2State);
+      gameStateMachine.setState(pauseState);
       // gameStateMachine.setState(introState);
     }
 
@@ -807,30 +812,22 @@ class GameState implements State {
   }
 
 
-  private coinValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-  // private coinValues = [10, 1, 3, 5, 8, 9, 4];
-  // private coinValues = [1,2,3]; // EASY
-  // private coinValues = [8,5,6,7,9,4]; // DIFICULTY MODE
-  // private coinValues = [13]; // HARD MODE
-  private coinIndex = 0;
-
-  private createEnemyCount(count: number = 1) {
+  private coinValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  private createEnemyValueList(count: number = 1): number[] {
     let list: number[] = [];
-    let maxScoreAvailable = 0;
-    let intent = 0;
 
     while (list.length < count) {
-      let value = this.coinValues[(randInt(0, this.coinValues.length))];
+      let value = this.coinValues[randInt(0, this.coinValues.length)];
       list.push(value);
     }
 
-    return { intent, list, maxScoreAvailable };
+    return list ;
   }
 
 
   private getEnemyNextValue() {
 
-    let value = this.enemyList.shift();
+    let value = this.enemyValueList.shift();
 
     // console.log('enemy remain: ' + JSON.stringify(this.enemyList));
 
@@ -884,19 +881,19 @@ class GameState implements State {
   }
 
   private shooterControlMode(shooter: Shooter) {
-    // Auto
+    // Auto / Manual
     return true;
-    // Manual
-    // return shooter.team == TEAM_A && !GameConfig.playerAutoShoot ? controls.isSpace : true;
 
+    // TODO touch control
+    // return shooter.team == TEAM_A && !GameConfig.playerAutoShoot ? controls.isSpace  : true;
   }
 
   /***
  Rainbow Color Code HEX
 
-    Red #e81416
+    Red #e81416  // Powerup
     Orange #ffa500
-    Yellow #faeb36
+    Yellow #faeb36 // Coin
     Green #79c314
     Blue #487de7
     Indigo #4b369d
@@ -925,11 +922,11 @@ class GameState implements State {
       this.createLabel(enemy.Position, '+' + enemy.scorePoints, { moveTo: Vector.createSize(50).rotate(-Math.PI / 2) });
 
       // Score points
-      this.score += enemy.scorePoints;
+      GameConfig.playerScore += enemy.scorePoints;
     }
 
     // game Coin
-    if (enemy.number > 0) {
+    if (enemy.number > 0 && enemy.number != 13) {
 
       setTimeout(() => {
         let coin = CollectibleFactory.createCollectible(COIN_YELLOW, { position, size });
@@ -954,11 +951,11 @@ class GameState implements State {
     switch (coin.type) {
       case COIN_RED:
         this.player!.weaponBulletType = BULLET_TYPE_FIREBALL;
-        this.createLabel(this.collectorCoin!.Position, 'FIREBALL');
+        this.createLabel(this.collectorCoin!.Position, 'FIREBALL', { moveTo: Vector.createSize(50).rotate(PI / 2) });
         break;
       case COIN_BLUE:
         this.player!.weaponBulletType = BULLET_TYPE_BULLET;
-        this.createLabel(this.collectorCoin!.Position, 'BULLET');
+        this.createLabel(this.collectorCoin!.Position, 'BULLET', { moveTo: Vector.createSize(50).rotate(PI / 2) });
         break;
 
       default:
@@ -978,9 +975,8 @@ class GameState implements State {
   onPlayerCoinTouched(coin: Coin) {
     if (!coin.Active) return;
 
-    const p = this.player!;
-
-    console.log('collect ' + coin.type + ' ' + coin.name + ' ' + p.number + ' + ' + coin.number + ' = ' + (p.number + coin.number));
+    // const p = this.player!;
+    // console.log('collect ' + coin.type + ' ' + coin.name + ' ' + p.number + ' + ' + coin.number + ' = ' + (p.number + coin.number));
 
     const spawnFrom = coin;
     let position = spawnFrom.Position.clone().add(Vector.rand());
@@ -1056,7 +1052,7 @@ class GameState implements State {
 
     if (collector.number + coin.number == 13) {
 
-      this.createLabel(collector.Position, "BOMB!");
+      this.createLabel(collector.Position, "BOMB!", { moveTo: Vector.createSize(50).rotate(PI / 2) });
 
       let bomb = this.createBomb(collector.Position);
 
@@ -1074,9 +1070,8 @@ class GameState implements State {
 
       // Collect points
       collector.number += coin.number;
-      GameConfig.playerCoins += coin.number;
 
-      console.log('Collected: +' + coin.number + ' = ' + collector.number);
+      // console.log('Collected: +' + coin.number + ' = ' + collector.number);
 
       // reset coin
       coin.number = 0;
@@ -1084,12 +1079,13 @@ class GameState implements State {
       if (collector.number > 12) {
 
         // Show Score label
-        this.createLabel(collector.Position, '+' + collector.number, { moveTo: Vector.createSize(50).rotate(-Math.PI / 2) });
+        this.createLabel(collector.Position, '+1000', { moveTo: Vector.createSize(100).rotate(Math.PI / 2) }); //
 
         // Score points
-        this.score += collector.number;
+        this.levelScore += 1000;
+        GameConfig.playerScore += 1000;
 
-        console.log('Score: +' + collector.number + ' = ' + this.score);
+        // console.log('Score: +' + collector.number + ' = ' + this.levelScore);
 
         // empty collector
         collector.number = 0;
@@ -1197,7 +1193,7 @@ class GameState implements State {
         let unitPosition = startPosition.clone().add(new Vector(0, 0).rotate(2 * PI / 12 * col));
 
         player = new Shooter(unitPosition, size, TEAM_A);
-        player.showShadow = true;
+        player.showShadow = false;
 
         player.setDynamicProperties = () => {
 
@@ -1298,10 +1294,10 @@ class GameState implements State {
     };
   }
 
-  createLabel(position: Vector, text: string, props = { moveTo: Vector.createSize(50) }) {
+  createLabel(position: Vector, text: string, props: { moveTo: Vector }) { // = { moveTo: Vector.createSize(50).rotate(PI/2) }
     let label = new Label({ position, size: Vector.createSize() }, text);
     label.text = text;
-    label.movePosition = label.Position.clone().add(props.moveTo!);
+    label.movePosition = label.Position.clone().add(props.moveTo);
     setTimeout(() => {
       label.destroy();
     }, 500);
@@ -1333,9 +1329,9 @@ function enemyTargetDesignation(Units: Shooter[]) {
       // let dist = drawEngine.canvasHeight * 1.2;
       let dist = 1;
       if (unit.team == TEAM_A) {
-        dist *= -1 * GameConfig.playerBulletRange;
+        dist *= -1 * GameConfig.bulletRange;
       } else {
-        dist *= 1 * GameConfig.enemyBulletRange;
+        dist *= 1 * GameConfig.bulletRange;
       }
 
       const spreadX = rand(-20, 20);

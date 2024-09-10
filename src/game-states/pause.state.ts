@@ -1,43 +1,43 @@
-// import { BaseState } from './base.state';
-// import { gameStateMachine } from '@/game-state-machine';
-// import { gameState } from './game.state';
-// import { Button } from '@/core/button';
-// import { menu2State } from './menu.state copy';
+import { BaseState } from './base.state';
+import { gameStateMachine } from '@/game-state-machine';
+import { gameState } from './game.state';
+import { Button } from '@/core/button';
+import { menu2State } from './menu.state copy';
 
 
-// const def = { w: 350, h: 120 };
-// const buttonProps = { x: 0, y: 0, w: def.w, h: def.h };
+const def = { w: 350, h: 120 };
+const buttonProps = { x: 0, y: 0, w: def.w, h: def.h };
 
-// class PauseState extends BaseState {
+class PauseState extends BaseState {
 
-//   onEnter() {
+  onEnter() {
 
-//     this.menuButtons = [];
+    this.menuButtons = [];
 
-//     const resume = new Button(buttonProps, 'RESUME', "", 100);
-//     resume.clickAction = () => {
-//       // gameStateMachine.setState(nfzGameState);
-//       gameStateMachine.setState(gameState);
-//     };
-//     this.menuButtons.push(resume);
-
-
-//     const back = new Button(buttonProps, 'Exit', "", 100);
-//     back.clickAction = () => {
-//       gameStateMachine.setState(menu2State);
-//     };
-//     this.menuButtons.push(back);
-
-//     // Call super after button created
-//     super.onEnter();
+    const resume = new Button(buttonProps, 'RESUME', "", 100);
+    resume.clickAction = () => {
+      // gameStateMachine.setState(nfzGameState);
+      gameStateMachine.setState(gameState);
+    };
+    this.menuButtons.push(resume);
 
 
-//   }
+    const back = new Button(buttonProps, 'Exit', "", 100);
+    back.clickAction = () => {
+      gameStateMachine.setState(menu2State);
+    };
+    this.menuButtons.push(back);
 
-//   onUpdate(dt:number) {
-//     super.onUpdate(dt);
-//   }
+    // Call super after button created
+    super.onEnter();
 
-// }
 
-// export const pauseState = new PauseState();
+  }
+
+  onUpdate(dt:number) {
+    super.onUpdate(dt);
+  }
+
+}
+
+export const pauseState = new PauseState();

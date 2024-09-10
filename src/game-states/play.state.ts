@@ -7,7 +7,7 @@ import { Vector } from '@/core/vector';
 import { inputMouse } from '@/core/input-mouse';
 import { sound } from '@/core/sound';
 import { menu2State } from './menu.state copy';
-import { backButton } from '@/game/game-config';
+import { backButton, GameConfig, HINTS } from '@/game/game-config';
 import { SND_BTN_HOVER, SND_BTN_CLICK, SND_UNIT_PLACE } from '@/game/game-sound';
 import { intro2State } from './intro.state copy';
 import { time } from '@/index';
@@ -16,23 +16,24 @@ const buttonProps = { x: 0, y: 0, w: 600, h: 150 };
 
 class PlayState extends BaseState {
 
-  private readonly dificultyOptions = [
-    { text: 'A', coord: [.5, .3] },
-    { text: 'B', coord: [.5, .4] },
-    { text: 'C', coord: [.5, .5] },
+  private readonly goalOptions = [
+    { index: 2, coord: [.5, .5] },
+    { index: 3, coord: [.5, .6] },
+    { index: 4, coord: [.5, .7] },
   ];
 
-  dificultyButtons: Button[] = [];
-  levelDificulty = 'Easy';
+  goalButtons: Button[] = [];
 
-  _selectedDificulty = 0;
+  _selectedGoal = 0;
 
-  set selectedDificulty(value: number) {
-    this._selectedDificulty = value;
-    sound(SND_UNIT_PLACE);
+  set selectedGoal(value: number) {
+    if (this.goalButtons[value].enabled) {
+      this._selectedGoal = value;
+      sound(SND_UNIT_PLACE);
+    }
   };
-  get selectedDificulty() {
-    return this._selectedDificulty;
+  get selectedGoal() {
+    return this._selectedGoal;
   };
 
 
@@ -41,60 +42,64 @@ class PlayState extends BaseState {
 
     this.color = '#218DD1';
 
-    this.dificultyButtons = [];
-    this.dificultyOptions
+    this.goalButtons = [];
+    this.goalOptions
       .forEach((level, index) => {
 
-        const btn = new Button(buttonProps, level.text);
-        btn.index = index;
+        const btn = new Button(buttonProps, (7+index) * 10 +'%');
+        btn.index = 2 + index;
+        if (index > 0) {
+          btn.accesory ='🔒';
+          btn.enabled = false;
+        }
         btn.clickAction = () => {
-          this._selectedDificulty = index;
+          this._selectedGoal = index;
         };
-        this.dificultyButtons.push(btn);
+        this.goalButtons.push(btn);
       });
 
 
     this.menuButtons = [];
 
 
-    const play = new Button(buttonProps, 'PLAY');
-    play.clickAction = () => {
-      // TODO
-      // nfzGameState.init(GameConfig.levelCurrentIndex);
-      // nfzGameState.backState = pauseState;
-      // gameStateMachine.setState(nfzGameState);
-      gameStateMachine.setState(gameState);
-    };
-    this.menuButtons.push(play);
-
     const back = new Button(buttonProps, backButton.label, "", backButton.fontSize);
+    back.index = 0;
     back.name = 'back';
     back.clickAction = () => {
       gameStateMachine.setState(menu2State);
     };
     this.menuButtons.push(back);
 
-    // Play button selected 
-    this.selectedMenuIndex = 1;
+
+    const play = new Button(buttonProps, 'PLAY');
+    play.index = 1;
+    play.clickAction = () => {
+      gameStateMachine.setState(gameState);
+    };
+    this.menuButtons.push(play);
 
 
-    this.menuButtons = [...this.menuButtons, ...this.dificultyButtons];
+    this.menuButtons = [...this.menuButtons, ...this.goalButtons];
 
     // Call super after buttons created
     super.onEnter();
 
     // Add button sounds
-    this.dificultyButtons.forEach(button => {
-      button.hoverEvent = () => {
-        sound(SND_BTN_HOVER);
-      };
-      button.clickEvent = () => {
-        sound(SND_BTN_CLICK);
-      };
-    });
+    // this.goalButtons.forEach(button => {
+    //   button.hoverEvent = () => {
+    //     sound(SND_BTN_HOVER);
+    //   };
+    //   button.clickEvent = () => {
+    //     sound(SND_BTN_CLICK);
+    //   };
+    // });
 
     // set listeners
     inputMouse.addEventListener('mousedown', () => this.mouseDown());
+
+
+      // Play button selected 
+      this.selectedMenuIndex = 1;
 
 
   }
@@ -106,6 +111,9 @@ class PlayState extends BaseState {
     drawEngine.context.save();
     intro2State.sceneAnimation(time);
     drawEngine.context.restore();
+
+    drawEngine.drawText(`${HINTS[0]}`, 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .22, 'white', 'center');
+
 
     this.menuRender();
 
@@ -137,7 +145,7 @@ class PlayState extends BaseState {
       .forEach((menu, index) => {
 
         // Set button position based on render position
-        menu.Position = this.getRenderPosition(menu);
+        menu.Position = this.getRenderPosition(menu, index);
         menu._draw(drawEngine.context);
 
       });
@@ -145,19 +153,39 @@ class PlayState extends BaseState {
 
   }
 
-  getRenderPosition(menu: Button) {
+  // getRenderPosition(menu: Button) {
+
+  //   if (menu.name == 'back') {
+  //     menu.width = 160;
+  //     return new Vector(drawEngine.canvasWidth * .1, backButton.posY);
+  //   }
+    
+  //   let info = this.goalOptions.filter(f => f.index == menu.index)[0];
+
+  //   if (info) {
+  //     return new Vector(drawEngine.canvasWidth * info.coord[0], drawEngine.canvasHeight * info.coord[1]);
+  //   }
+
+  //   return new Vector(drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .8);
+  // }
+
+  getRenderPosition(menu:Button, index: number) {
 
     if (menu.name == 'back') {
       menu.width = 160;
       return new Vector(drawEngine.canvasWidth * .1, backButton.posY);
     }
-    let info = this.dificultyOptions.filter(f => f.text == menu.text)[0];
+
+    const xCenter = drawEngine.canvasWidth * .5;
+    const y = this.refY + this.offsetRefY + (index) * (this.menuOptionHeigth + this.menuOptionMarginHeigth);
+
+    let info = this.goalOptions.filter(f => f.index == menu.index)[0];
 
     if (info) {
-      return new Vector(drawEngine.canvasWidth * info.coord[0], drawEngine.canvasHeight * info.coord[1]);
+      return new Vector(drawEngine.canvasWidth*info.coord[0], drawEngine.canvasHeight*info.coord[1]);
     }
 
-    return new Vector(drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .8);
+    return new Vector(xCenter, y);
   }
 
 }

@@ -30,12 +30,12 @@ export class Button {
   Position: Vector;
   Size: Vector;
 
+  index = 0;
   name: string;
   width: any;
   height: any;
   text: string;
   data: string;
-  index = 0;
   accesory: string | undefined = undefined;
 
 
@@ -64,7 +64,7 @@ export class Button {
     },
     'hover': {
       text: '#fff',
-      color: 'rgb(150,150,150,.3)',
+      color: 'rgb(150,150,150,.5)',
       lineWidth: 4,
       lineColor: '#ccc',
       fontSize: fontSize * 1.1,
@@ -72,6 +72,7 @@ export class Button {
     'active': {
       text: '#fff',
       color: 'rgb(200,200,200,.3)',
+      // color: 'green',
       lineWidth: 0,
       lineColor: '#ccc',
       fontSize: fontSize,
@@ -85,7 +86,8 @@ export class Button {
     },
     'selected': {
       text: '#fff',
-      color: '#ababab',
+      color: 'red',
+      // color: '#ababab',
       lineWidth: 4,
       lineColor: '#ccc',
       fontSize: fontSize,
@@ -184,20 +186,20 @@ export class Button {
     ctx.beginPath();
 
     // Button area
-    ctx.fillRect(0 - this.width / 2, 0 - this.height / 2, this.width, this.height);
+    ctx.rect(0 - this.width / 2, 0 - this.height / 2, this.width, this.height);
 
-    ctx.stroke();///// BUG!!
-    // ctx.fill();
+    // ctx.stroke();
+    ctx.fill();
 
     if (this.selected) {
-      ctx.lineWidth = 20;
-      ctx.strokeStyle = '#0cc';
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#ccc';
       ctx.stroke();
     }
 
 
     // text inside
-    drawEngine.drawText(!this.accesory? this.text : this.text + ' ' + this.accesory , props.fontSize, 0, 0, props.text);
+    drawEngine.drawText((!this.accesory? this.text : this.text + ' ' + this.accesory) , props.fontSize, 0, 0, props.text);
 
 
     // // text outside

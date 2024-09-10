@@ -19,13 +19,16 @@ export class BaseState implements State {
 
   menuButtons: Button[] = [];
 
-  _selectedMenu = 0;
+  _selectedMenuIndex = 0;
+
   set selectedMenuIndex(value: number) {
-    this._selectedMenu = value;
-    sound(SND_BTN_HOVER);
+      if (this.menuButtons[value].enabled) {
+        this._selectedMenuIndex = value;
+        sound(SND_BTN_HOVER);
+      }
   };
   get selectedMenuIndex() {
-    return this._selectedMenu;
+    return this._selectedMenuIndex;
   };
 
 
@@ -97,8 +100,11 @@ export class BaseState implements State {
 
     // drawEngine.drawText('Start Game', 60, xCenter, 600, this.isStartSelected ? 'white' : 'gray');
     // drawEngine.drawText('Toggle Fullscreen', 60, xCenter, 700, this.isStartSelected ? 'gray' : 'white');
-
-    this.menuButtons.sort((a, b) => a.Position.y - b.Position.y < 0 ? -1 : 1).map(_ => _.selected = false);
+ 
+   
+    this.menuButtons
+    // .sort((a, b) => a.index - b.index < 0 ? -1 : 1)
+    .map(_ => _.selected = false);
 
     this.menuButtons.forEach((button: Button, index) => {
 
@@ -118,16 +124,18 @@ export class BaseState implements State {
 
   renderScoreBar() {
 
-    drawEngine.drawText(`Level : ${1 + GameConfig.levelCurrentIndex}`, 50, drawEngine.canvasWidth * .6, drawEngine.canvasHeight * .1 + 10, 'white', 'center');
+    const newLocal = drawEngine.canvasHeight * .07;
+    // 
+    drawEngine.drawText(`Level : ${1 + GameConfig.levelCurrentIndex}`, 50, drawEngine.canvasWidth * .1, newLocal + 10, 'white', 'center');
 
     [
       // { icon: gameIcons.heart, value: GameConfig.playerHearts, pos: .72 },
-      { icon: gameIcons.coin, value: GameConfig.playerCoins, pos: .75 },
-      { icon: gameIcons.diamond, value: GameConfig.playerDiamond, pos: .9 },
+      // { icon: gameIcons.diamond, value: GameConfig.playerDiamond, pos: .9 },
+      { icon: gameIcons.wallet, value: GameConfig.playerScore, pos: .8 },
     ].forEach((item) => {
-      const position = new Vector(drawEngine.canvasWidth * item.pos, drawEngine.canvasHeight * .1);
-      drawEngine.drawText('' + item.icon, 55, position.x, position.y, 'white', 'center');
-      drawEngine.drawText(`${item.value}`, 50, position.x + 20, position.y + 10, 'white', 'left'); //
+      const position = new Vector(drawEngine.canvasWidth * item.pos, newLocal);
+      drawEngine.drawText('' + item.icon, 60, position.x, position.y, 'white', 'center');
+      drawEngine.drawText(`${item.value}`, 55, position.x + 20, position.y + 10, 'white', 'left'); //
     });
 
   }

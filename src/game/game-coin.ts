@@ -83,11 +83,11 @@ export class Coin extends Unit {
 
        if (!debug.showWires && this.showBall) {
         drawEngine.drawCircle(renderPosition, this.Radius, {stroke: 'orange', fill: 'orange', lineWidth: 4}); 
-        drawEngine.drawCircle(renderPosition, this.Radius - 15 , {stroke: this.color, fill: this.color, lineWidth: 16});
+        drawEngine.drawCircle(renderPosition, this.Radius - 10 , {stroke: this.color, fill: this.color, lineWidth: 0});
        }
 
 
-      let size = this.Radius*.7 + this.Radius*.3 * Math.abs(Math.cos(time*1.5));
+      let size = this.Radius + this.Radius*.3 * Math.abs(Math.cos(time*1.5));
 
       this.showNumber && drawEngine.drawText((this.prefix != '' ? this.prefix + ' ' : '') + this.number, size, renderPosition.x, renderPosition.y);
 

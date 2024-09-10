@@ -7,5 +7,7 @@ export class Pointer {
   public leftButton: boolean = false;
   public middleButton: boolean = false;
   public rigthButton: boolean = false;
+  // TODO
+  // public touched: boolean = false;
 
 }

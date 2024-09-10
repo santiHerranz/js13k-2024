@@ -4,7 +4,7 @@ import { drawEngine } from '@/core/draw-engine';
 import { gameState } from './game.state';
 import { finalState } from './final.state';
 import { Button } from '@/core/button';
-import { GameConfig } from '../game/game-config';
+import { GameConfig, gameIcons } from '../game/game-config';
 
 
 const buttonProps = { x: 0, y: 0, w: 600, h: 150 };
@@ -18,18 +18,13 @@ class RepairState extends BaseState {
 
     this.menuButtons = [];
 
-    let repair = new Button(buttonProps, GameConfig.repairCost +' 💎');
+    let repair = new Button(buttonProps, GameConfig.repairCost +' ' + gameIcons.wallet);
     
-    repair.enabled =  (GameConfig.playerDiamond >= GameConfig.repairCost);
+    repair.enabled =  (GameConfig.playerScore >= GameConfig.repairCost);
 
     repair.clickAction = () => {
-      // TODO
-      // nfzGameState.repairPlayer();
-      // gameStateMachine.setState(nfzGameState);
-
       gameState.repairPlayer();
       gameStateMachine.setState(gameState);
-
     };
     this.menuButtons.push(repair);
 
@@ -40,7 +35,7 @@ class RepairState extends BaseState {
     };
     this.menuButtons.push(skip);
 
-    this.selectedMenuIndex = 0;
+    this.selectedMenuIndex = 1;
 
     super.onEnter();
 
@@ -52,6 +47,7 @@ class RepairState extends BaseState {
 
     const refY = drawEngine.canvasHeight * .3;
     let row = 0, rowHeight = 80;
+    row++;
 
     drawEngine.drawText(`Repair?`, 100, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
     row++;

@@ -17,14 +17,15 @@ class Menu2State extends BaseState {
 
 
   // LEVEL TABLE COORDS
-  private readonly levelOptions = Array.from({ length: 13 }, (_, i) => {
+  private readonly buttonCoords = Array.from({ length: 13 }, (_, i) => {
     const row = Math.floor(i / 2);
     const col = i % 2;
     return {
-      text: prefix + (i + 1),
+      index: i,
       coord: i < 12 ? [0.28 + 0.44 * col, 0.22 + 0.1 * row] : [0.5, 0.81]
     };
   });
+
 
   onEnter() {
 
@@ -32,17 +33,30 @@ class Menu2State extends BaseState {
 
 
     this.menuButtons = [];
+    let iIndex = -1;
 
-    this.levelOptions 
+    const back = new Button(buttonProps, backButton.label, "", backButton.fontSize);
+    back.name = 'back';
+    back.index = iIndex++;
+    back.clickAction = () => {
+      gameStateMachine.setState(intro2State);
+    };
+    this.menuButtons.push(back);
+
+    this.buttonCoords 
+    // .sort((a,b) => a.index > b.index ? 1 : -1)
       .forEach((level, index) => {
 
-        const btn = new Button(buttonProps, level.text);
-        btn.index = index;
+        const btn = new Button(buttonProps, prefix + (level.index + 1));
+        btn.index = iIndex++;
+        if (!GameConfig.levelIndexUnlocked.includes(btn.index)) {
+          btn.accesory ='🔒';
+          btn.enabled = false;
+        }        
         btn.clickAction = () => {
 
           GameConfig.levelCurrentIndex = index;
 
-          // TODO
           playState.backState = this;
           gameStateMachine.setState(playState);
         };
@@ -50,22 +64,12 @@ class Menu2State extends BaseState {
       });
 
 
-    const back = new Button(buttonProps, backButton.label, "", backButton.fontSize);
-    back.name = 'back';
-    back.clickAction = () => {
-      gameStateMachine.setState(intro2State);
-    };
-    this.menuButtons.push(back);
-
-    this.menuButtons = this.menuButtons.sort((a,b) => b.index - a.index);
-
-
     // Call super after buttons created
     super.onEnter();
 
 
     // First level button selected 
-    if (this.selectedMenuIndex < 1)
+    // if (this.selectedMenuIndex < 1)
       this.selectedMenuIndex = 1;
 
 
@@ -78,6 +82,8 @@ class Menu2State extends BaseState {
     drawEngine.context.save();
     intro2State.sceneAnimation(time);
     drawEngine.context.restore();
+
+    // drawEngine.drawText('' + this.selectedMenuIndex +' de ' + this.menuButtons.length , 60, drawEngine.canvasWidth*.5, 200, 'white');
 
     this.menuRender();
 
@@ -114,13 +120,9 @@ class Menu2State extends BaseState {
       return new Vector(drawEngine.canvasWidth * .1, backButton.posY);
     }
 
-    let info = this.levelOptions.filter(f => f.text == menu.text)[0];
+    let info = this.buttonCoords.filter(f => f.index == menu.index)[0];
 
     if (info) {
-      if (!GameConfig.levelIndexUnlocked.includes(menu.index)) {
-        menu.accesory ='🔒';
-        menu.enabled = false;
-      }
       return new Vector(drawEngine.canvasWidth*info.coord[0], drawEngine.canvasHeight*info.coord[1]);
     }
 

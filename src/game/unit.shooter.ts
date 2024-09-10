@@ -11,7 +11,7 @@ import { debug } from "./game-debug";
 
 export class Shooter extends Unit {
 
-    scorePoints = 100;
+    scorePoints = 10;
 
     planeImage = new Image();
     planeImageScale = 8;

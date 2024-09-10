@@ -7,6 +7,7 @@ import { intro2State } from './game-states/intro.state copy';
 import { menu2State } from './game-states/menu.state copy';
 import { gameState } from './game-states/game.state';
 import { repairState } from './game-states/repair.state';
+import { playState } from './game-states/play.state';
 
 
 export let appSprite: HTMLImageElement;
@@ -34,9 +35,9 @@ document.body.style.cssText = styleBody;
 
 createGameStateMachine(intro2State);
 // createGameStateMachine(menu2State);
-// createGameStateMachine(repairState);
-// createGameStateMachine(gameState); 
 // createGameStateMachine(playState);
+// createGameStateMachine(gameState); 
+// createGameStateMachine(repairState);
 //    createGameStateMachine(finalState);
 
 

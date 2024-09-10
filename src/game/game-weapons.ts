@@ -2,8 +2,6 @@ import { Vector } from '@/core/vector';
 import { Shooter as Shooter } from '@/game/unit.shooter';
 import { Bullet } from '@/game/unit.bullet';
 import { Fireball } from './unit-fireball';
-import { Unit } from './unit';
-import { rand } from '@/utils';
 
 export type BULLET_TYPE = 'bullet' | 'fireball';
 
@@ -57,8 +55,8 @@ export function createBullet(bulleType: BULLET_TYPE, shooter: Shooter, bulletSiz
     throw new Error(`Unknown bullet type: ${bulleType}`);
 
   bullet.Acceleration = velocity;
-  bullet._z = 100;
-  bullet._zv = -4*4;
+  bullet._z = 10;
+  bullet._zv = -1;
 
   return bullet;
 

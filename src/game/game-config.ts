@@ -1,18 +1,26 @@
 import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL } from "@/game/game-weapons";
 import { PI, Timer } from "@/utils";
-import { scrollSpeed } from "../game-states/game.state";
 
 
-export const backButton = {label: '⏪', fontSize: 100, posY: 150};
-export const gameIcons = {heart: '🧡', coin: '🟡', diamond: '💎'};
+// 🛡🧲💊💣💰💳🟡
+export const backButton = {label: '⏪', fontSize: 80, posY: 240};
+export const gameIcons = {wallet: '💰'}; //heart: '🧡', , diamond: '💎'
 
+export const HINTS = [
+  "💀 DESTROY ALL EMENIES!",
+  // "  HINT: USE ARROW KEYS TO MOVE.",
+  // "  HINT: PRESS BACKSPACE TO UNDO.",
+  // "  HINT: PRESS R TO RESTART.",
+  // "  HINT: PRESS ENTER TO PAUSE."
+];
 
 export const PLAYER_SHOOT_PATTERN_MODES: { origin: number[]; dest: number[]; spreadAngle:number; cooldown: number; }[] = [
+
   { origin: [0], dest: [0], spreadAngle: 0, cooldown: 1, }, // single straight bullet
 
   { origin: [-1, 1], dest: [0, 0], spreadAngle: Math.PI/180*15, cooldown: .05, }, // double straight bullet
 
-  { origin: [-1, 0, 1], dest: [0, 0, 0], spreadAngle: 0, cooldown: .01, },
+  { origin: [-1, 0, 1], dest: [0, 0, 0], spreadAngle: 0, cooldown: .01, },  // triple straight bullet
   { origin: [0, -1, 1], dest: [0, -1, 1], spreadAngle: PI/180*10, cooldown: .001, },
   { origin: [-.5, 0, .5], dest: [-.5, 0, .5], spreadAngle: PI/180*15, cooldown: .001, },
   { origin: [-1, 0, 1], dest: [-1, 0, 1], spreadAngle: 0, cooldown: .001, },
@@ -26,10 +34,17 @@ export const GameConfig = {
   title: 'NFZ13',
   subtitle: 'No Flight Zone',
   
-  playerCoins: 0,
   playerHearts: 0,
-  playerDiamond: 1,
-  repairCost: 1,
+  playerScore: 0,
+  repairCost: 10000,
+  // playerDiamond: 1,
+
+  // General
+  coinSize: 30,
+  coin13Size: 50,
+
+  bulletRange: 2000,
+    
 
   playerUnits: 1,
 
@@ -37,14 +52,14 @@ export const GameConfig = {
   playerSize: 50,
 
   // Weapon
+  playerAutoShoot: false,
+
   playerBulletType: BULLET_TYPE_BULLET,// BULLET_TYPE_FIREBALL, // 
   playerBulletSize: 5, // 50, //
   playerBulletSpeed: 20, // 5-100
-  playerBulletRange: 2000,
   playerBulletDamagePoints: 50,
   playerBulletExplosionDamagePoints: 50,
 
-  playerAutoShoot: true,
   playerShootCoolDownValue: .1, //.03,
   playerShootPattern: 0,
   playerShootSpreadAngle: Math.PI/180*15,
@@ -63,28 +78,23 @@ export const GameConfig = {
   enemyShootCoolDownValue: 2.5, // safe value: 2.5, carpet drop: .1
   enemyBulletSize: 8,
   enemyBulletSpeed: 10,
-  enemyBulletRange: 800,
   enemyBulletDamagePoints: 5,
   enemyBulletExplosionDamagePoints: 5,
   
-  //Move
+  // Move
   ennemyPath: 0,
   enemyMaxVelocity: 5,
   enemyMaxAcceleration: 1000,
   enemyPathPattern: 0,
   
-  // levelEnemyCount: [3, 5, 8, 15, 20, 35, 50, 19, 150, 240, 380, 620, 1000], // exponencial
-  // levelEnemyCount: [5, 8, 15, 20, 35], // , 50, 19, 150, 240, 350],
-  levelEnemyCount: [8,10,15,20,27,36,50,66,90,120,160,220,300], // , 50, 19, 150, 240, 350],
+  levelEnemyCount: [8,10,15,20,27,36,50,66,90,120,160,220,300], 
+
   levelCurrentIndex: 0,
+  levelGoalCurrentIndex: 0,
 
-  levelIndexUnlocked: [0], //,2,3,4,5
-  levelUnlocked: [1,2,3,4,5], //
-
+  levelIndexUnlocked: [0], // ,1,2,3,4,5,6,7,8,9,10,11,12
+  levelGoalIndexUnlocked: [[0]], // 1,2,3,4,5,6,7,8,9,10,11,12
   
-  coinSize: 30,
-  coin13Size: 50,
-
   bombMaxVelocity: 3,
   bombMaxAcceleration: 100,
 

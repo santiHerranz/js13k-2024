@@ -117,10 +117,6 @@ export class GameObject implements Indexable {
     }
 
     destroy() {
-
-        // if (!excludeVerbose.includes(this.type))
-        //     console.log(`destroy: ${this.type} - ${this.name}`);
-
         this.Active = false;
     }
 

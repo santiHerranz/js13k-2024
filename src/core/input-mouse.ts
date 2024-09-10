@@ -3,13 +3,13 @@ import { Pointer } from "./pointer";
 import { Vector } from "./vector";
 
 
-type MouseEvent = 'mousedown' | 'mousemove' | 'mouseup' | 'mousescroll' | 'mousedrag'
+type MouseEvent = 'mousedown' | 'mousemove' | 'mouseup' | 'mousedrag' // | 'mousescroll'
 type TouchEvent = 'touchstart' | 'touchmove' | 'touchend'
 
 const MOUSE_EVENT_TYPE_DOWN: MouseEvent  = 'mousedown';
 const MOUSE_EVENT_TYPE_MOVE: MouseEvent  = 'mousemove';
 const MOUSE_EVENT_TYPE_UP: MouseEvent  = 'mouseup';
-const MOUSE_EVENT_TYPE_SCROLL: MouseEvent  = 'mousescroll';
+// const MOUSE_EVENT_TYPE_SCROLL: MouseEvent  = 'mousescroll';
 const MOUSE_EVENT_TYPE_DRAG: MouseEvent  = 'mousedrag';
 
 const TOUCH_EVENT_TYPE_START: TouchEvent  = 'touchstart';
@@ -137,6 +137,7 @@ class InputMouse {
     this.dragStart = new Vector(this.lastX, this.lastY);
     this.camDragged = false;
 
+
     this.#listeners.filter(f => f.type == TOUCH_EVENT_TYPE_END).forEach(listener => listener.callback(this.pointer));
   };
 
@@ -235,34 +236,34 @@ class InputMouse {
   };
 
 
-  handleScroll = (evt: any) => {
+  // handleScroll = (evt: any) => {
 
-    var delta = evt.wheelDelta ? evt.wheelDelta / 40 : evt.detail ? -evt.detail : 0;
+  //   var delta = evt.wheelDelta ? evt.wheelDelta / 40 : evt.detail ? -evt.detail : 0;
 
-    // console.log('handleScroll: delta ' + delta)
-    if (delta) {
+  //   // console.log('handleScroll: delta ' + delta)
+  //   if (delta) {
 
-      // this._enable()
+  //     // this._enable()
 
-      // FEATURE: lateral move when zoom in
-      if (Math.abs(delta) > 0) {
-        let last = new Vector(this.lastX, this.lastY);
-        let center = new Vector(drawEngine.canvasWidth / 2, drawEngine.canvasHeight / 2);
-        let desp = last.subtract(center).scale(.2); // * this._scene._cam._distance/800
-        if (delta < 0) desp.scale(-1);
-        // this._scene._cam._move(desp.x, desp.y)
-      }
+  //     // FEATURE: lateral move when zoom in
+  //     if (Math.abs(delta) > 0) {
+  //       let last = new Vector(this.lastX, this.lastY);
+  //       let center = new Vector(drawEngine.canvasWidth / 2, drawEngine.canvasHeight / 2);
+  //       let desp = last.subtract(center).scale(.2); // * this._scene._cam._distance/800
+  //       if (delta < 0) desp.scale(-1);
+  //       // this._scene._cam._move(desp.x, desp.y)
+  //     }
 
-      var factor = Math.pow(1.05, delta);
-      this.setZoomValue(factor);
+  //     var factor = Math.pow(1.05, delta);
+  //     this.setZoomValue(factor);
 
-      // this.eventMouseScroll();
-      this.#listeners.filter(f => f.type == MOUSE_EVENT_TYPE_SCROLL).forEach(listener => listener.callback(this.pointer));
+  //     // this.eventMouseScroll();
+  //     this.#listeners.filter(f => f.type == MOUSE_EVENT_TYPE_SCROLL).forEach(listener => listener.callback(this.pointer));
 
 
-    }
-    return evt.preventDefault() && false;
-  };
+  //   }
+  //   return evt.preventDefault() && false;
+  // };
 
 
 }
