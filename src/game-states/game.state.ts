@@ -205,8 +205,8 @@ class GameState implements State {
 
     this.enemyValueList = this.createEnemyValueList(GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex]);
 
-    // Kill goal of enemies created
-    this.stats.killsGoal = this.enemyValueList.length * currentKillsGoalPercent;
+    // TODO Kill goal of enemies created
+    this.stats.killsGoal = this.enemyValueList.length; // * currentKillsGoalPercent;
 
 
     let hw = drawEngine.canvasWidth / 2;

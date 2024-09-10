@@ -64,9 +64,11 @@ class FinalState extends BaseState {
   }
 
   onLeave(dt: number): void {
-    if (this.result.status == 1)
+    if (this.result.status == 1) {
       GameConfig.levelIndexUnlocked.push(++GameConfig.levelCurrentIndex);
-      GameConfig.levelGoalIndexUnlocked[GameConfig.levelCurrentIndex].push(++GameConfig.levelGoalCurrentIndex);
+      // TODO
+      // GameConfig.levelGoalIndexUnlocked[GameConfig.levelCurrentIndex].push(++GameConfig.levelGoalCurrentIndex);
+    }
   }
 
   onUpdate(dt: number) {
