@@ -64,7 +64,7 @@ class FinalState extends BaseState {
   }
 
   onLeave(dt: number): void {
-    if (this.result.status == 1) {
+    if (this.result.status == 1 && GameConfig.levelCurrentIndex + 1 < GameConfig.levelEnemyCount.length ) {
       GameConfig.levelIndexUnlocked.push(++GameConfig.levelCurrentIndex);
       // TODO
       // GameConfig.levelGoalIndexUnlocked[GameConfig.levelCurrentIndex].push(++GameConfig.levelGoalCurrentIndex);
@@ -83,9 +83,9 @@ class FinalState extends BaseState {
     drawEngine.drawText(this.result.title, 200, drawEngine.canvasWidth / 2, refY + rowHeight * row++, this.result.color, 'center');
     row+=2;
     // drawEngine.drawText(`Level ` + (GameConfig.levelCurrentIndex + 1), 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
-    drawEngine.drawText(`Destroy all enemies! ` + this.result.icon, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
-    drawEngine.drawText(`Kills `+ this.result.kills, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
-    drawEngine.drawText(`Score +`+ this.result.score, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
+    drawEngine.drawText("Destroy "+ GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] +" enemies!" + this.result.icon, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
+    drawEngine.drawText('Killed ' + this.result.kills, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
+    drawEngine.drawText('Scored +' + this.result.score, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
     // drawEngine.drawText(`Coins +135`, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
     row+=3;
 

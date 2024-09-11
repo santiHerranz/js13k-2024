@@ -125,8 +125,9 @@ export class Shooter extends Unit {
         debug.showTargetWires && this.targetPosition && drawEngine.drawLine(this.Position, this.targetPosition, { stroke: `red` });
 
         if (this.team == TEAM_A) {
-            this.planeImageScale = 4 * this.Size.x * .8 + 4 * this.Size.x * .2 * Math.abs(Math.cos(time)); // 1; //
-            !debug.showWires && drawEngine.context.drawImage(this.planeImage, renderPosition.x - .5 * this.planeImageScale, renderPosition.y - .5 * this.planeImageScale, this.planeImageScale, this.planeImageScale);
+             this.planeImageScale = 4 * this.Size.x * .8 + 4 * this.Size.x * .2 * Math.abs(Math.cos(time)); // 1; //
+             !debug.showWires && drawEngine.context.drawImage(this.planeImage, renderPosition.x - .5 * this.planeImageScale, renderPosition.y - .5 * this.planeImageScale, this.planeImageScale, this.planeImageScale);
+        // !debug.showWires && drawEngine.drawRectangle(renderPosition.clone().add(new Vector(-this.Size.x, -this.Size.y)), new Vector(this.Size.x * 2, this.Size.y * 2), { stroke: this.color, fill: this.color });
         }
 
         if (this.team == TEAM_A) {

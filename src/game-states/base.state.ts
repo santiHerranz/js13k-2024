@@ -22,10 +22,10 @@ export class BaseState implements State {
   _selectedMenuIndex = 0;
 
   set selectedMenuIndex(value: number) {
-      if (this.menuButtons[value].enabled) {
-        this._selectedMenuIndex = value;
-        sound(SND_BTN_HOVER);
-      }
+    if (this.menuButtons[value].enabled) {
+      this._selectedMenuIndex = value;
+      sound(SND_BTN_HOVER);
+    }
   };
   get selectedMenuIndex() {
     return this._selectedMenuIndex;
@@ -79,7 +79,7 @@ export class BaseState implements State {
     if (inputMouse.pointer.leftButton) {
 
       this.menuButtons
-        .sort((a, b) => a.Position.y - b.Position.y < 0 ? -1 : 1)
+        // .sort((a, b) => a.Position.y - b.Position.y < 0 ? -1 : 1)
         .forEach((button, index) => {
           button.selected = button.mouseDownEvent(inputMouse.pointer.Position);
 
@@ -100,18 +100,17 @@ export class BaseState implements State {
 
     // drawEngine.drawText('Start Game', 60, xCenter, 600, this.isStartSelected ? 'white' : 'gray');
     // drawEngine.drawText('Toggle Fullscreen', 60, xCenter, 700, this.isStartSelected ? 'gray' : 'white');
- 
-   
+
+
     this.menuButtons
-    // .sort((a, b) => a.index - b.index < 0 ? -1 : 1)
-    .map(_ => _.selected = false);
+      // .sort((a, b) => a.index - b.index < 0 ? -1 : 1)
+      .map(_ => _.selected = false);
 
     this.menuButtons.forEach((button: Button, index) => {
 
       button.selected = index == this.selectedMenuIndex;
 
       button._update(dt);
-      // button._draw(drawEngine.context);
     });
 
     this.updateControls();
@@ -172,16 +171,19 @@ export class BaseState implements State {
 
     let currentButton = this.menuButtons[this.selectedMenuIndex];
 
-    if ((controls.isUp && !controls.previousState.isUp && this.selectedMenuIndex > 0)) {
-      this.selectedMenuIndex -= 1;
+
+    if ((controls.isUp && !controls.previousState.isUp && this.selectedMenuIndex < this.menuButtons.length - 1)) {
+      if (!this.menuButtons[this.selectedMenuIndex + 1].keyboardDisabled)
+        this.selectedMenuIndex += 1;
     }
-    if ((controls.isDown && !controls.previousState.isDown && this.selectedMenuIndex < this.menuButtons.length - 1)) {
-      this.selectedMenuIndex += 1;
+    if ((controls.isDown && !controls.previousState.isDown && this.selectedMenuIndex > 0)) {
+      if (!this.menuButtons[this.selectedMenuIndex - 1].keyboardDisabled)
+        this.selectedMenuIndex -= 1;
     }
 
     currentButton = this.menuButtons[this.selectedMenuIndex];
 
-    if (controls.isConfirm && !controls.previousState.isConfirm) {
+    if (!currentButton.keyboardDisabled && controls.isConfirm && !controls.previousState.isConfirm) {
 
       currentButton.selected = true;
 

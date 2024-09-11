@@ -80,7 +80,7 @@ class DrawEngine {
 
     ctx.lineWidth = 8;
     ctx.fillStyle = options.fill!;
-    ctx.strokeStyle = 'black'; // options.stroke!;
+    ctx.strokeStyle = options.stroke!;
 
     ctx.beginPath();
     ctx.rect(position.x, position.y, size.x, size.y);

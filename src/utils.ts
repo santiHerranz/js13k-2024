@@ -131,6 +131,7 @@ export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
 
 
 class Timer {
+
     time: number | undefined;
   setTime: number | undefined;
 
@@ -138,6 +139,8 @@ class Timer {
         this.time = timeLeft == undefined ? undefined : time + timeLeft;
         this.setTime = timeLeft;
     }
+
+    elapsedAction: Function | undefined;
 
     set(timeLeft = 0) {
         this.time = time + timeLeft;

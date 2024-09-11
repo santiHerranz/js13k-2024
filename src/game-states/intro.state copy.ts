@@ -7,6 +7,7 @@ import { inputMouse } from "@/core/input-mouse";
 import { GameConfig } from "../game/game-config";
 import { menu2State } from "./menu.state copy";
 import { Vector } from "@/core/vector";
+import { Timer } from "@/utils";
 
 
 const xCenter = drawEngine.context.canvas.width / 2;
@@ -19,6 +20,10 @@ class Intro2State extends BaseState {
     this.menuButtons = [];
 
     let start = new Button({ x: 0, y: 0, w: 450, h: 150 }, 'START');
+    
+    // Testing
+    // start.timer = new Timer(10);
+
     start.clickAction = () => {
       menu2State.backState = this;
       gameStateMachine.setState(menu2State);
@@ -65,11 +70,14 @@ class Intro2State extends BaseState {
     const sin = Math.sin(time), cos = Math.cos(time);
 
     const renderPosition = new Vector(drawEngine.canvasWidth/2, drawEngine.canvasHeight*.85 + 10 * sin );
-    const planeImageScale = 300 + 30 * cos; 
+    const planeImageScale = 250 + 30 * cos; 
     drawEngine.context.save();
-    drawEngine.context.translate(renderPosition.x - 50*cos, renderPosition.y + 50*sin);
-    drawEngine.context.rotate(.3*sin);
+     drawEngine.context.translate(renderPosition.x - 50*cos, renderPosition.y + 50*sin);
+     drawEngine.context.rotate(.1*sin);
+
+    // drawEngine.drawRectangle(new Vector(-planeImageScale/2, -planeImageScale/2), new Vector(100, 100), { stroke: this.color, fill: this.color });
     drawEngine.context.drawImage(planeSprite, -planeImageScale/2, -planeImageScale/2, planeImageScale, planeImageScale*.4);
+
     drawEngine.context.restore();
   }
 

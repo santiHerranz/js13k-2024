@@ -1,5 +1,4 @@
 /* eslint-disable class-methods-use-this */
-import { State } from '@/core/state';
 import { drawEngine } from '@/core/draw-engine';
 import { controls } from '@/core/controls';
 import { gameStateMachine } from '@/game-state-machine';
@@ -16,7 +15,7 @@ import { Unit } from '@/game/unit';
 import { GameObject } from '@/game-object';
 import { Shooter } from '@/game/unit.shooter';
 import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL, createBullet } from '@/game/game-weapons';
-import { backButton, HINTS, PLAYER_SHOOT_PATTERN_MODES } from '../game/game-config';
+import { backButton, gameIcons, HINTS, PLAYER_SHOOT_PATTERN_MODES } from '../game/game-config';
 import { Bullet } from '@/game/unit.bullet';
 import { Explosion } from '@/game/unit.explosion';
 import { GameConfig } from '../game/game-config';
@@ -26,18 +25,15 @@ import { sound } from '@/core/sound';
 import { GameMap, GameMapTheme } from '@/game/game-map';
 import { defaultExplosionTime, Fireball } from '@/game/unit-fireball';
 import { Coin, COIN_YELLOW, COIN_RED, COIN_BLUE, COIN_TOUCHED } from '@/game/game-coin';
-import { time } from '@/index';
 import { globalParticles } from '@/game/game-particle';
 import { Collector } from '@/game/game-collector';
 import { Label } from '@/game/game-label';
 import { CollectibleFactory } from '@/game/game-collectible';
 import { Bomb } from '@/game/game.bomb';
 import { finalState } from './final.state';
-import { repairState } from './repair.state';
 import { menu2State } from './menu.state copy';
 import { debug } from '@/game/game-debug';
 import { SND_ARROW_SHOOT, SND_BIG_EXPLOSION, SND_COIN, SND_DEATH, SND_EXPLOSION, SND_HIGHSCORE, SND_TICTAC } from '@/game/game-sound';
-import { pauseState } from './pause.state';
 import { BaseState } from './base.state';
 import { Button } from '@/core/button';
 
@@ -51,7 +47,7 @@ export const TEAM_A: TEAM = 1;
 export const TEAM_B: TEAM = 2;
 
 const currentKillsGoalPercent = .7;
-const buttonProps = { x: 0, y: 0, w: 300, h: 150 };
+const buttonProps = { x: 0, y: 0, w: 300, h: 150, r: 100 };
 
 
 const ENEMY_PATH = [
@@ -98,6 +94,7 @@ class GameState extends BaseState {
   enemySpawnTimer: Timer = new Timer(undefined);
 
   hintTimer: Timer = new Timer(undefined);
+  currentHint = 0;
 
   gameLevelTimer: Timer = new Timer(undefined);
   shootSoundColdDownTimer: Timer = new Timer(1);
@@ -107,6 +104,7 @@ class GameState extends BaseState {
   stats = { enemiesCreated: 0, kills: 0, killsGoal: 0 };
   autopilot: boolean = false;
   winTimeout: NodeJS.Timeout | undefined;
+  abandon: boolean = false;
 
 
   constructor() {
@@ -175,40 +173,75 @@ class GameState extends BaseState {
     /////////////
     // MENU BUTTONS
     this.menuButtons = [];
-    let pause = new Button({ x: 0, y: 0, w: 60, h: 50 }, '⏸', "", 60);
-    pause.clickAction = () => {
-      gameStateMachine.setState(pauseState);
-    };
-    this.menuButtons.push(pause);
 
-    let weapon = new Button({ x: 0, y: 0, w: 60, h: 60 }, '🔥', "", 80);
-    weapon.clickAction = () => {
+    // Eject 
+    let eject = new Button({ x: 0, y: 0, w: 60, h: 50 }, backButton.label, backButton.fontSize);
+    eject.index = -1;
+    eject.keyboardDisabled = true;
+    eject.clickAction = () => {
+      this.abandon = true;
       setTimeout(() => {
-        this.playerChangeWeapon(0);  
-        weapon.accesory = '';
-      }, 5000);
-      this.playerChangeWeapon(3);
-      weapon.accesory = '🔒';
+        gameStateMachine.setState(menu2State);
+      }, 2000);
     };
+    this.menuButtons.push(eject);
+
+    // SHIELD BUTTON
+    let shield = new Button({ x: 0, y: 0, r: 60 }, '🛡', 80);
+    shield.index = 1;
+    shield.clickAction = () => {
+      this.player!.maxHealthPoints = 20000;
+      shield.enabled = false;
+      shield.timer?.set(GameConfig.playerShieldTime);
+    };
+
+    shield.timer = new Timer(undefined);
+    shield.timerLoad = new Timer(undefined);
+    shield.timer.elapsedAction = () => { 
+      this.player!.maxHealthPoints = 100;
+      shield.timerLoad?.set(GameConfig.playerSuperWeaponReloadTime);
+      // setTimeout(() => {
+      // }, GameConfig.playerShieldReloadTime *1000);
+    };
+    shield.timerLoad.elapsedAction = () => { 
+      shield.enabled = true;
+    };
+
+    this.menuButtons.push(shield);
+
+    // WEAPON BUTTON
+    let weapon = new Button({ x: 0, y: 0, r: 60 }, '🔥', 80); //, { default: { lineWidth: 0 }}
+    weapon.index = 0;
+    weapon.clickAction = () => {
+      this.playerChangeWeapon(3);
+      weapon.enabled = false;
+      weapon.timer?.set(GameConfig.playerSuperWeaponTime);
+    };
+
+    weapon.timer = new Timer(undefined);
+    weapon.timerLoad = new Timer(undefined);
+    weapon.timer.elapsedAction = () => { 
+      this.playerChangeWeapon(0);
+      weapon.timerLoad?.set(GameConfig.playerSuperWeaponReloadTime);
+      // setTimeout(() => {
+      // }, GameConfig.playerSuperWeaponReloadTime * 1000);
+    };
+    weapon.timerLoad.elapsedAction = () => { 
+      weapon.enabled = true;
+    };
+
     this.menuButtons.push(weapon);
 
-    let shield = new Button({ x: 0, y: 0, w: 60, h: 60 }, '🛡', "", 80);
-    shield.clickAction = () => {
-      setTimeout(() => {
-        this.player!.maxHealthPoints = 100;
-        shield.accesory = '';
-      }, 5000);
-      this.player!.maxHealthPoints = 20000;
-      shield.accesory = '🔒';
-    };
-    this.menuButtons.push(shield);
+
+    this.selectedMenuIndex = 1;
 
 
     // Call super after button created
     super.onEnter();
 
 
-    this.hintTimer.set(4);
+    if (GameConfig.levelCurrentIndex == 0)
+      this.hintTimer.set(4);
 
     this.canvas!.setAttribute(
       "style",
@@ -264,6 +297,7 @@ class GameState extends BaseState {
     this.player = this.createPlayer(startPosition);
 
     this.autopilot = false;
+    this.abandon = false;
 
     this.enemySpawnTimer.set(GameConfig.enemySpawnTime);
     this.gameLevelTimer.set(0);
@@ -290,7 +324,7 @@ class GameState extends BaseState {
   }
 
 
-  private playerChangeWeapon(value:number) {
+  private playerChangeWeapon(value: number) {
     GameConfig.playerShootPattern = value;
     const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
     GameConfig.playerShootCoolDownValue = currentMode.cooldown;
@@ -434,8 +468,11 @@ class GameState extends BaseState {
 
         if (unit.team == TEAM_A) {
           setTimeout(() => {
-            // gameStateMachine.setState(summaryState);
-            gameStateMachine.setState(repairState);
+            // option 1
+            // gameStateMachine.setState(repairState);
+            // option 2
+            finalState.result.status = -1;
+            gameStateMachine.setState(finalState);            
 
           }, 2000);
         }
@@ -462,7 +499,7 @@ class GameState extends BaseState {
 
 
     // ENEMY SPAWN
-    if (!debug.enemyPaused && this.enemySpawnTimer.elapsed() && this.enemyValueList.length > 0) {
+    if (!this.hintTimer.isSet() && this.enemySpawnTimer.elapsed() && this.enemyValueList.length > 0) {
 
       let hw = drawEngine.canvasWidth / 2;
       let hh = drawEngine.canvasHeight / 2;
@@ -494,11 +531,6 @@ class GameState extends BaseState {
     this.bullets.forEach((item: GameObject) => {
       item._update(dt);
     });
-
-
-    if (controls.isEscape) {
-      gameStateMachine.setState(pauseState);
-    }
 
 
     // Enemy target designation
@@ -595,7 +627,7 @@ class GameState extends BaseState {
       manageUnitCollision(useCase, dt);
 
       // DRAW QUADTREE
-      debug.showQuadtree && drawEngine.drawQuadtree(this.collisionTree, drawEngine.context);
+      // debug.showQuadtree && drawEngine.drawQuadtree(this.collisionTree, drawEngine.context);
 
     });
 
@@ -642,7 +674,7 @@ class GameState extends BaseState {
     // Shoot
     this.units
       .forEach((shooter: Shooter) => {
-        if (shooter.targetPosition && this.shooterControlMode(shooter)) {
+        if (shooter.targetPosition) {
           shooter.shootTo(shooter.targetPosition);
         }
       });
@@ -650,13 +682,15 @@ class GameState extends BaseState {
 
     const deltaMove = 2.5;
     let move = { h: 0, v: 0 };
-    if (!this.autopilot) {
+    if (!this.autopilot && !this.abandon) {
       move.h += controls.isLeft ? -deltaMove : 0;
       move.h += controls.isRight ? deltaMove : 0;
       move.v += controls.isUp ? -deltaMove * .8 : 0;
       move.v += controls.isDown ? deltaMove * .8 : 0;
-    } else {
+    } else if (this.autopilot) {
       move.v += -deltaMove * 0.4;
+    } else if (this.abandon) {
+      move.v += deltaMove * 0.4;
     }
 
 
@@ -741,7 +775,7 @@ class GameState extends BaseState {
 
 
       // Player Constraint move area
-      if (item.team == TEAM_A && !this.autopilot) {
+      if (item.team == TEAM_A && !this.autopilot && !this.abandon) {
         this.playerPositionAreaConstraint(item);
       }
 
@@ -817,10 +851,19 @@ class GameState extends BaseState {
 
     // let message = `${this.stats.kills} of ${this.stats.killsGoal}`;
 
-    drawEngine.drawText(`💀 ${GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] - this.stats.kills}`, 50, drawEngine.canvasWidth * .1, 200, 'white', 'center');
+    drawEngine.drawText(gameIcons.enemy +` ${GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] - this.stats.kills}`, 50, drawEngine.canvasWidth * .1, 200, 'white', 'center');
 
-    if (!this.hintTimer.elapsed())
-      drawEngine.drawText(`💀 DESTROY ` + currentKillsGoalPercent * 100 + `% EMENIES!`, 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
+
+    if (this.hintTimer.isSet()) {
+      if ( !this.hintTimer.elapsed()) {
+        drawEngine.drawText(HINTS[this.currentHint].toUpperCase() , 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
+      } else if (this.currentHint < HINTS.length - 1) {
+        this.currentHint++;
+        this.hintTimer.set(4);
+      } else {
+        this.hintTimer.unset();
+      }
+    }
 
 
     // drawEngine.drawText(`Enemies: ${this.stats.killsGoal - this.stats.kills} of ${this.stats.killsGoal}`, 60, drawEngine.canvasWidth * .95, 350, 'white', 'right');
@@ -852,8 +895,12 @@ class GameState extends BaseState {
     }
 
     if (controls.isEscape) {
-      gameStateMachine.setState(pauseState);
-      // gameStateMachine.setState(introState);
+      // gameStateMachine.setState(pauseState);
+      // gameStateMachine.setState(menu2State);
+      this.abandon = true;
+      setTimeout(() => {
+        gameStateMachine.setState(menu2State);
+      }, 2000);
     }
 
 
@@ -871,7 +918,7 @@ class GameState extends BaseState {
   }
 
 
-  private coinValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  private coinValues = [...Array(100).keys(),1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   private createEnemyValueList(count: number = 1): number[] {
     let list: number[] = [];
 
@@ -939,14 +986,6 @@ class GameState extends BaseState {
     }
   }
 
-  private shooterControlMode(shooter: Shooter) {
-    // Auto / Manual
-    return true;
-
-    // TODO touch control
-    // return shooter.team == TEAM_A && !GameConfig.playerAutoShoot ? controls.isSpace  : true;
-  }
-
   /***
  Rainbow Color Code HEX
 
@@ -959,12 +998,9 @@ class GameState extends BaseState {
     Violet #70369d
    */
   private getEnemyColor(value: number) {
-    let color = '#fff';
-
+    let color = '';
     const colors = ['#ffa500', '#79c314', '#487de7', '#4b369d', '#70369d'];
-
     color = colors[value % colors.length];
-
     return color;
   }
 
@@ -985,10 +1021,10 @@ class GameState extends BaseState {
     }
 
     // game Coin
-    if (enemy.number > 0 && enemy.number != 13) {
+    if (enemy.number > 0 && enemy.number < 13) {
 
       // Not all enemies drop coin
-      Math.random()>.4 && setTimeout(() => {
+        setTimeout(() => {
         let coin = CollectibleFactory.createCollectible(COIN_YELLOW, { position, size });
         coin.maxVelocity = 2;
         coin.number = enemy.number;
@@ -1281,6 +1317,8 @@ class GameState extends BaseState {
 
           let playerBullet = createBullet(player.weaponBulletType, player, bulletSize, bulletVelocity, initOffset, bulletTargetPosition);
 
+          // sound(SND_SHOOT);
+
           // playerBullet._zv = zv;
 
           playerBullet.damagePoints = GameConfig.playerBulletDamagePoints;
@@ -1325,6 +1363,7 @@ class GameState extends BaseState {
           this.shakeForce = 50;
           sound(SND_BIG_EXPLOSION);
         };
+
 
         // obj.targetPosition = unitPosition.clone().add(new Vector(rand(0, size.length()) * 5, rand(0, size.length() * 5)));
         if (this.units.filter(f => f.team == TEAM_A).length > 0)
@@ -1372,15 +1411,17 @@ class GameState extends BaseState {
 
 
   }
+
+
   getRenderPosition(menu: Button, index: number) {
-    switch (index) {
+    switch (menu.index) { 
+      case -1:
+        return new Vector(drawEngine.canvasWidth * .1, backButton.posY);
       case 0:
-        return new Vector(drawEngine.canvasWidth * .95, 150);
+        return new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .75);
         case 1:
-          return new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .8);
-          case 2:
-            return new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .9);
-          }
+          return new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .85);
+      }
     return new Vector(drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .5);
 
   }

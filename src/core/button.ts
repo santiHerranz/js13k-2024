@@ -1,43 +1,50 @@
-import { Unit } from "@/game/unit";
 import { drawEngine } from "./draw-engine";
 import { inputMouse } from "./input-mouse";
 import { Vector } from "./vector";
-import { debug } from "@/game/game-debug";
+import { PI, Timer } from "@/utils";
 
 export interface ButtonStateProp {
-  lineColor: string;
-  text: string;
-  color: string;
-  lineWidth: number;
-  fontSize: number;
+  lineColor?: string;
+  text?: string;
+  color?: string;
+  lineWidth?: number;
+  fontSize?: number;
 }
 
 
 interface ButtonColors {
   default: ButtonStateProp;
-  hover: ButtonStateProp;
-  active: ButtonStateProp;
-  disabled: ButtonStateProp;
-  selected: ButtonStateProp;
+  hover?: ButtonStateProp;
+  active?: ButtonStateProp;
+  disabled?: ButtonStateProp;
+  selected?: ButtonStateProp;
 }
 export interface ButtonProps {
-  x: number, y: number, w: number, h: number
+  x: number, y: number, w?: number, h?: number, r?: number
 }
+
+type BUTTON_STATUS = 'default' | 'hover' | 'active' | 'disabled' | 'selected';
+export const BUTTON_STATUS_DEFAULT: BUTTON_STATUS = 'default';
+export const BUTTON_STATUS_HOVER: BUTTON_STATUS = 'hover';
+export const BUTTON_STATUS_ACTIVE: BUTTON_STATUS = 'active';
+export const BUTTON_STATUS_DISABLED: BUTTON_STATUS = 'disabled';
+export const BUTTON_STATUS_SELECTED: BUTTON_STATUS = 'selected';
+
 
 export class Button {
 
 
   Position: Vector;
   Size: Vector;
+  width: any;
+  height: any;
+  Radius: number | undefined;
 
   index = 0;
   name: string;
-  width: any;
-  height: any;
   text: string;
-  data: string;
-  accesory: string | undefined = undefined;
-
+  timer: Timer | undefined;
+  timerLoad: Timer | undefined;
 
   colors: ButtonColors;
 
@@ -50,11 +57,12 @@ export class Button {
   clickAction: Function;
 
   hoverEvent: () => void;
-  hoverOutEvent: () => void;
+  // hoverOutEvent: () => void;
   clickEvent: () => void;
+  keyboardDisabled = false;
 
 
-  constructor(props: ButtonProps, text = "", title = "", fontSize: number = 70, colors: ButtonColors = {
+  constructor(props: ButtonProps, text = "", fontSize: number = 70, colors: ButtonColors = {
     'default': {
       text: '#ddd',
       color: 'rgb(150,150,150,.3)',
@@ -96,29 +104,40 @@ export class Button {
 
     this.Position = new Vector(props.x, props.y);
     this.Size = new Vector(props.w, props.h);
+    this.Radius = props.r;
+    if (props.r)
+      this.Size = new Vector(props.r * 2, props.r * 2);
+
+    this.width = this.Size.x;
+    this.height = this.Size.y;
 
     this.name = '';
-
-    this.width = props.w;
-    this.height = props.h;
     this.text = text;
-    this.data = '';
     this.clickAction = () => { };
     this.colors = colors;
 
-    this.state = 'default'; // current button state
+    this.state = BUTTON_STATUS_DEFAULT; // current button state
 
 
     this.hoverEvent = () => {
     };
-    this.hoverOutEvent = () => {
-    };
+    // this.hoverOutEvent = () => {
+    // };
     this.clickEvent = () => {
     };
   }
 
 
   _update(dt: number) {
+
+    if (this.timer && this.timer.elapsedAction && this.timer.elapsed()) {
+      this.timer.elapsedAction();
+      this.timer.unset();
+    }
+    if (this.timerLoad && this.timerLoad.elapsedAction && this.timerLoad.elapsed()) {
+      this.timerLoad.elapsedAction();
+      this.timerLoad.unset();
+    }    
 
     if (!this.visible) return;
 
@@ -135,26 +154,26 @@ export class Button {
 
       if (this.enabled) {
 
-        if (this.state != 'active' && this.state != 'hover') {
+        if (this.state != BUTTON_STATUS_ACTIVE && this.state != BUTTON_STATUS_HOVER) {
           this.hoverEvent();
-          this.state = 'hover';
+          this.state = BUTTON_STATUS_HOVER;
         }
 
 
         // check for click
-        if (this.state != 'active' && inputMouse.pointer.leftButton) {
-          this.state = 'active';
+        if (this.state != BUTTON_STATUS_ACTIVE && inputMouse.pointer.leftButton) {
+          this.state = BUTTON_STATUS_ACTIVE;
         }
       }
 
 
     }
     else {
-      if (this.state != 'active' && this.state == 'hover') {
-        this.hoverOutEvent();
-      }
+      // if (this.state != BUTTON_STATUS_ACTIVE && this.state == BUTTON_STATUS_HOVER) {
+      //   this.hoverOutEvent();
+      // }
 
-      this.state = 'default';
+      this.state = BUTTON_STATUS_DEFAULT;
     }
 
   }
@@ -172,7 +191,50 @@ export class Button {
 
     ctx.save();
 
-    if (this.enabled && (this.state == 'hover' || this.state == 'active')) {
+    if (this.timer?.isSet()) {
+      ctx.save();
+      
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth = 15;
+      // ctx.beginPath();
+      // ctx.rotate(-PI/2);
+      // ctx.moveTo(this.Size.x/2, 0);
+      // // ctx.arc(0, 0, this.Size.x / 2, 0, PI * 2 - PI * 2 * this.timer!.p100());
+      // ctx.arc(0, 0, this.Size.x/2, 0, PI * 2 - PI * 2 * this.timer!.p100());
+      // ctx.arc(0, 0, this.Size.x/2, PI * 2 - PI * 2 * this.timer!.p100(), 0, true);
+      // ctx.closePath();
+      // ctx.stroke();
+
+      // Dibuja el primer arco en avance
+      this.drawArc(ctx, this.Size.x, PI * 2 - PI * 2 * this.timer!.p100(), true);
+
+
+      ctx.restore();
+    }
+
+    if (this.timerLoad?.isSet()) {
+      ctx.save();
+      
+      ctx.strokeStyle = 'gray';
+      ctx.lineWidth = 15;
+      // ctx.beginPath();
+      // // ctx.scale(-1,1)
+      // ctx.rotate(-PI/2);
+      // ctx.moveTo(this.Size.x/2, 0);
+      // // ctx.arc(0, 0, this.Size.x / 2, 0, PI * 2 - PI * 2 * this.timer!.p100());
+      // ctx.arc(0, 0, this.Size.x/2, 0, PI * 2 * this.timerLoad!.p100());
+      // ctx.arc(0, 0, this.Size.x/2, PI * 2 * this.timerLoad!.p100(), 0, true);
+      // ctx.closePath();
+      // ctx.stroke();
+
+      // Dibuja el segundo arco en reverso
+      this.drawArc(ctx, this.Size.x, PI * 2 * this.timerLoad!.p100());
+
+      ctx.restore();
+    }
+
+
+    if (this.enabled && (this.state == BUTTON_STATUS_HOVER || this.state == BUTTON_STATUS_ACTIVE)) {
       ctx.scale(1.05, 1.05);
     }
 
@@ -180,13 +242,16 @@ export class Button {
       ctx.globalAlpha = .3;
 
 
-    ctx.strokeStyle = props.lineColor;
-    ctx.lineWidth = props.lineWidth;
-    ctx.fillStyle = props.color;
+    ctx.strokeStyle = props?.lineColor!;
+    ctx.lineWidth = props?.lineWidth!;
+    ctx.fillStyle = props?.color!;
     ctx.beginPath();
 
     // Button area
-    ctx.rect(0 - this.width / 2, 0 - this.height / 2, this.width, this.height);
+    if (this.Radius)
+      ctx.arc(0, 0, this.Radius, 0, Math.PI * 2);
+    else
+      ctx.rect(0 - this.width / 2, 0 - this.height / 2, this.width, this.height);
 
     // ctx.stroke();
     ctx.fill();
@@ -199,7 +264,7 @@ export class Button {
 
 
     // text inside
-    drawEngine.drawText((!this.accesory? this.text : this.text + ' ' + this.accesory) , props.fontSize, 0, 0, props.text);
+    drawEngine.drawText(this.text, props?.fontSize!, 0, 0, props?.text); //  this.index +'. '+
 
 
     // // text outside
@@ -214,15 +279,34 @@ export class Button {
     ctx.restore();
 
 
-    if (debug.showButtonBounds) {
-      ctx.beginPath();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'red';
-      ctx.rect(this.Position.x - this.width / 2, this.Position.y - this.height / 2, this.width, this.height);
-      ctx.stroke();
-    }
+    // if (debug.showButtonBounds) {
+    //   ctx.beginPath();
+    //   ctx.lineWidth = 1;
+    //   ctx.strokeStyle = 'red';
+    //   ctx.rect(this.Position.x - this.width / 2, this.Position.y - this.height / 2, this.width, this.height);
+    //   ctx.stroke();
+    // }
 
   }
+
+  drawArc(ctx: CanvasRenderingContext2D, size: number, angle: number, reverse = false) {
+    
+    ctx.beginPath();
+    ctx.rotate(-PI / 2);
+    ctx.moveTo(size / 2, 0);
+    
+    // Arco principal
+    if (!reverse) {
+        ctx.arc(0, 0, size / 2, 0, angle);
+        ctx.arc(0, 0, size / 2, angle, 0, true);
+    } else {
+        ctx.arc(0, 0, size / 2, 0, angle);
+        ctx.arc(0, 0, size / 2, angle, 0, true);
+    }
+
+    ctx.closePath();
+    ctx.stroke();
+}
 
 
   mouseDownEvent(mousePosition: Vector): boolean {
@@ -246,7 +330,7 @@ export class Button {
         this.clickAction(this);
       }
 
-      this.state = 'default';
+      this.state = BUTTON_STATUS_DEFAULT;
       return true;
     }
     return false;

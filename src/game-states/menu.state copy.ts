@@ -7,25 +7,25 @@ import { intro2State } from './intro.state copy';
 import { GameConfig, backButton } from '../game/game-config';
 import { playState } from './play.state';
 import {  time } from '@/index';
+import { controls } from '@/core/controls';
 
-const prefix = 'Level ';
 
-const buttonProps = { x: 0, y: 0, w: 400, h: 150 };
+const buttonProps = { x: 0, y: 0, w: 400, h: 150, r: 80 };
 
 
 class Menu2State extends BaseState {
 
 
   // LEVEL TABLE COORDS
-  private readonly buttonCoords = Array.from({ length: 13 }, (_, i) => {
-    const row = Math.floor(i / 2);
-    const col = i % 2;
-    return {
-      index: i,
-      coord: i < 12 ? [0.28 + 0.44 * col, 0.22 + 0.1 * row] : [0.5, 0.81]
-    };
-  });
-
+  // private readonly buttonCoords = Array.from({ length: 13 }, (_, i) => {
+  //   const row = Math.floor(i / 2);
+  //   const col = i % 2;
+  //   return {
+  //     index: i,
+  //     coord: i < 12 ? [0.4 + 0.2 * col, 0.2 + 0.1 * row + col * .025] : [0.5, 0.82]
+  //   };
+  // });
+  private readonly buttonCoords =[[108,1800,],[540,1574,],[648,1392,],[432,1344,],[648,1200,],[432,1152,],[648,1008,],[432,960,],[648,816,],[432,768,],[648,624,],[432,576,],[648,432,],[432,384,],];
 
   onEnter() {
 
@@ -33,24 +33,24 @@ class Menu2State extends BaseState {
 
 
     this.menuButtons = [];
-    let iIndex = -1;
 
-    const back = new Button(buttonProps, backButton.label, "", backButton.fontSize);
+    const back = new Button(buttonProps, backButton.label, backButton.fontSize);
     back.name = 'back';
-    back.index = iIndex++;
+    back.index = 13;
     back.clickAction = () => {
       gameStateMachine.setState(intro2State);
     };
     this.menuButtons.push(back);
 
+    let iIndex = 0;
     this.buttonCoords 
     // .sort((a,b) => a.index > b.index ? 1 : -1)
       .forEach((level, index) => {
 
-        const btn = new Button(buttonProps, prefix + (level.index + 1));
+        const btn = new Button(buttonProps, ''+ (index + 1));
         btn.index = iIndex++;
         if (!GameConfig.levelIndexUnlocked.includes(btn.index)) {
-          btn.accesory ='🔒';
+          // btn.accesory ='🔒';
           btn.enabled = false;
         }        
         btn.clickAction = () => {
@@ -69,9 +69,7 @@ class Menu2State extends BaseState {
 
 
     // First level button selected 
-    // if (this.selectedMenuIndex < 1)
-      this.selectedMenuIndex = 1;
-
+      this.selectedMenuIndex = GameConfig.levelIndexUnlocked.length;
 
   }
 
@@ -83,9 +81,15 @@ class Menu2State extends BaseState {
     intro2State.sceneAnimation(time);
     drawEngine.context.restore();
 
-    // drawEngine.drawText('' + this.selectedMenuIndex +' de ' + this.menuButtons.length , 60, drawEngine.canvasWidth*.5, 200, 'white');
+    // drawEngine.drawText('Levels ' + this.selectedMenuIndex +' de ' + (this.menuButtons.length-1) , 60, drawEngine.canvasWidth*.5, 200, 'white');
+    drawEngine.drawText('Zone' , 70, drawEngine.canvasWidth *.5, 220);
 
     this.menuRender();
+
+    if (controls.isEscape) {
+      gameStateMachine.setState(intro2State);
+    }
+
 
   }
 
@@ -105,6 +109,8 @@ class Menu2State extends BaseState {
         menu._draw(drawEngine.context);
       });
 
+    // let coords = this.menuButtons.map(m =>  [parseInt(''+ m.Position.x), parseInt(''+ m.Position.y)]);
+    // console.log(coords);
 
   }
 
@@ -116,14 +122,14 @@ class Menu2State extends BaseState {
     const y = this.refY + this.offsetRefY + (index) * (this.menuOptionHeigth + this.menuOptionMarginHeigth);
 
     if (menu.name == 'back') {
-      menu.width = 160;
+      menu.width = menu.height = 100;
       return new Vector(drawEngine.canvasWidth * .1, backButton.posY);
     }
 
-    let info = this.buttonCoords.filter(f => f.index == menu.index)[0];
+    let info = this.buttonCoords[index];
 
     if (info) {
-      return new Vector(drawEngine.canvasWidth*info.coord[0], drawEngine.canvasHeight*info.coord[1]);
+      return new Vector(info[0], info[1]);
     }
 
     return new Vector(xCenter, y);
