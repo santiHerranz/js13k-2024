@@ -1,9 +1,7 @@
 import { drawEngine } from "@/core/draw-engine";
 import { time } from "@/index";
-import { Unit, UnitProperties } from "./unit";
-import { COIN_TYPE } from "./game-coin";
+import { UnitProperties } from "./unit";
 import { TEAM_B } from "@/game-states/game.state";
-import { Explosion } from "./unit.explosion";
 import { Vector } from "@/core/vector";
 import { Shooter } from "./unit.shooter";
 
@@ -25,7 +23,6 @@ export class Bomb extends Shooter {
         // console.log(`Rendering a BOMB: ${this.name}`);
         super.draw(ctx);
 
-        this.applyDamage(5);
 
         ctx.beginPath();
         ctx.arc(this.Position.x, this.Position.y, this.Radius*.8 + this.Radius *.2 * Math.cos(time*4), 0, 2*Math.PI);

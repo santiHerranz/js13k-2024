@@ -5,7 +5,7 @@ import { Unit } from "./unit";
 import { drawEngine } from "@/core/draw-engine";
 import { TEAM_A, TEAM_B } from "@/game-states/game.state";
 import { BULLET_TYPE, BULLET_TYPE_BULLET } from "./game-weapons";
-import { imageSource, time } from "@/index";
+import { planeSprite, time } from "@/index";
 import { transparent } from "./game-colors";
 import { debug } from "./game-debug";
 
@@ -39,7 +39,7 @@ export class Shooter extends Unit {
 
         this.loadProperties();
 
-        this.planeImage.src = imageSource;
+        this.planeImage = planeSprite;
 
         this.getImage(this.planeImageScale);
 
@@ -100,6 +100,10 @@ export class Shooter extends Unit {
 
     draw(ctx: CanvasRenderingContext2D, dir: boolean = false) {
 
+        if (this.maxHealthPoints > 1000)
+            drawEngine.drawCircle(this.Position, this.Radius*1.5, {stroke: this.color, fill: 'cyan', lineWidth: 4}); 
+        
+
         // hits
         if (this.hits>0) {
             drawEngine.context.save();
@@ -155,6 +159,7 @@ export class Shooter extends Unit {
         // if (this.team == TEAM_B) {
         //     drawEngine.drawText(''+ this.number, size , this.Position.x, this.Position.y + 5);
         // }
+
 
         if (this.hits>0) {
             drawEngine.context.restore();

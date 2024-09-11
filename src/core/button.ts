@@ -54,7 +54,7 @@ export class Button {
   clickEvent: () => void;
 
 
-  constructor(props: ButtonProps, text = "", title = "", fontSize: number = 80, colors: ButtonColors = {
+  constructor(props: ButtonProps, text = "", title = "", fontSize: number = 70, colors: ButtonColors = {
     'default': {
       text: '#ddd',
       color: 'rgb(150,150,150,.3)',

@@ -5,8 +5,7 @@ import { Button } from '@/core/button';
 import { menu2State } from './menu.state copy';
 
 
-const def = { w: 350, h: 120 };
-const buttonProps = { x: 0, y: 0, w: def.w, h: def.h };
+const buttonProps = { x: 0, y: 0, w: 400, h: 150 };
 
 class PauseState extends BaseState {
 
@@ -14,7 +13,7 @@ class PauseState extends BaseState {
 
     this.menuButtons = [];
 
-    const resume = new Button(buttonProps, 'RESUME', "", 100);
+    const resume = new Button(buttonProps, 'RESUME', "");
     resume.clickAction = () => {
       // gameStateMachine.setState(nfzGameState);
       gameStateMachine.setState(gameState);
@@ -22,7 +21,7 @@ class PauseState extends BaseState {
     this.menuButtons.push(resume);
 
 
-    const back = new Button(buttonProps, 'Exit', "", 100);
+    const back = new Button(buttonProps, 'Exit', "");
     back.clickAction = () => {
       gameStateMachine.setState(menu2State);
     };

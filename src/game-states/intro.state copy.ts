@@ -1,11 +1,12 @@
 import { gameStateMachine } from "@/game-state-machine";
 import { BaseState } from "./base.state";
 import { drawEngine } from "@/core/draw-engine";
-import { canvas, time } from "@/index";
+import { canvas, planeSprite, time } from "@/index";
 import { Button } from "@/core/button";
 import { inputMouse } from "@/core/input-mouse";
 import { GameConfig } from "../game/game-config";
 import { menu2State } from "./menu.state copy";
+import { Vector } from "@/core/vector";
 
 
 const xCenter = drawEngine.context.canvas.width / 2;
@@ -23,6 +24,12 @@ class Intro2State extends BaseState {
       gameStateMachine.setState(menu2State);
     };
     this.menuButtons.push(start);
+
+    // let btn = new Button({ x: 0, y: 0, w: 450, h: 150 }, 'TOUCH');
+    // btn.clickAction = () => {
+    //   gameStateMachine.setState(touchState);
+    // };
+    // this.menuButtons.push(btn);
 
     // Call super after button created
     super.onEnter();
@@ -54,6 +61,16 @@ class Intro2State extends BaseState {
     drawEngine.drawText('@santiHerranz for JS13K 2024', 40, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .9, '#eee', 'center');
 
     super.menuRender();
+
+    const sin = Math.sin(time), cos = Math.cos(time);
+
+    const renderPosition = new Vector(drawEngine.canvasWidth/2, drawEngine.canvasHeight*.85 + 10 * sin );
+    const planeImageScale = 300 + 30 * cos; 
+    drawEngine.context.save();
+    drawEngine.context.translate(renderPosition.x - 50*cos, renderPosition.y + 50*sin);
+    drawEngine.context.rotate(.3*sin);
+    drawEngine.context.drawImage(planeSprite, -planeImageScale/2, -planeImageScale/2, planeImageScale, planeImageScale*.4);
+    drawEngine.context.restore();
   }
 
 

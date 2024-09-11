@@ -16,7 +16,7 @@ import { Unit } from '@/game/unit';
 import { GameObject } from '@/game-object';
 import { Shooter } from '@/game/unit.shooter';
 import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL, createBullet } from '@/game/game-weapons';
-import { HINTS, PLAYER_SHOOT_PATTERN_MODES } from '../game/game-config';
+import { backButton, HINTS, PLAYER_SHOOT_PATTERN_MODES } from '../game/game-config';
 import { Bullet } from '@/game/unit.bullet';
 import { Explosion } from '@/game/unit.explosion';
 import { GameConfig } from '../game/game-config';
@@ -38,6 +38,8 @@ import { menu2State } from './menu.state copy';
 import { debug } from '@/game/game-debug';
 import { SND_ARROW_SHOOT, SND_BIG_EXPLOSION, SND_COIN, SND_DEATH, SND_EXPLOSION, SND_HIGHSCORE, SND_TICTAC } from '@/game/game-sound';
 import { pauseState } from './pause.state';
+import { BaseState } from './base.state';
+import { Button } from '@/core/button';
 
 let magicOffset = 100;
 
@@ -49,13 +51,15 @@ export const TEAM_A: TEAM = 1;
 export const TEAM_B: TEAM = 2;
 
 const currentKillsGoalPercent = .7;
+const buttonProps = { x: 0, y: 0, w: 300, h: 150 };
+
 
 const ENEMY_PATH = [
   [new Vector(100, 350), new Vector(100, 1200), new Vector(1000, 1200), new Vector(1000, 350)],
   // [new Vector(-100, 1200), new Vector(1200, 350)],
 ];
 
-class GameState implements State {
+class GameState extends BaseState {
 
 
   private canvas: HTMLElement | null = document.getElementById('c2d');
@@ -81,7 +85,7 @@ class GameState implements State {
 
   playerAlive: boolean;
 
-  levelScore:number = 0;
+  levelScore: number = 0;
 
   shakeForce: number = 0;
 
@@ -90,7 +94,6 @@ class GameState implements State {
   lastX: number = 0;
   lastY: number = 0;
   player: Shooter | undefined;
-  currentMessage: string = 'Hellow world';
 
   enemySpawnTimer: Timer = new Timer(undefined);
 
@@ -107,6 +110,7 @@ class GameState implements State {
 
 
   constructor() {
+    super();
 
 
     this.playerAlive = false;
@@ -168,7 +172,43 @@ class GameState implements State {
 
   onEnter() {
 
-    this.hintTimer.set(3);
+    /////////////
+    // MENU BUTTONS
+    this.menuButtons = [];
+    let pause = new Button({ x: 0, y: 0, w: 60, h: 50 }, '⏸', "", 60);
+    pause.clickAction = () => {
+      gameStateMachine.setState(pauseState);
+    };
+    this.menuButtons.push(pause);
+
+    let weapon = new Button({ x: 0, y: 0, w: 60, h: 60 }, '🔥', "", 80);
+    weapon.clickAction = () => {
+      setTimeout(() => {
+        this.playerChangeWeapon(0);  
+        weapon.accesory = '';
+      }, 5000);
+      this.playerChangeWeapon(3);
+      weapon.accesory = '🔒';
+    };
+    this.menuButtons.push(weapon);
+
+    let shield = new Button({ x: 0, y: 0, w: 60, h: 60 }, '🛡', "", 80);
+    shield.clickAction = () => {
+      setTimeout(() => {
+        this.player!.maxHealthPoints = 100;
+        shield.accesory = '';
+      }, 5000);
+      this.player!.maxHealthPoints = 20000;
+      shield.accesory = '🔒';
+    };
+    this.menuButtons.push(shield);
+
+
+    // Call super after button created
+    super.onEnter();
+
+
+    this.hintTimer.set(4);
 
     this.canvas!.setAttribute(
       "style",
@@ -250,6 +290,17 @@ class GameState implements State {
   }
 
 
+  private playerChangeWeapon(value:number) {
+    GameConfig.playerShootPattern = value;
+    const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
+    GameConfig.playerShootCoolDownValue = currentMode.cooldown;
+    GameConfig.playerShootSpreadAngle = currentMode.spreadAngle;
+
+    // Apply changed properties for all
+    this.units.forEach(unit => unit.setDynamicProperties());
+
+  }
+
   onLeave() {
 
     // remove listeners
@@ -260,11 +311,13 @@ class GameState implements State {
 
   private winConditionCriteria() {
     // return this.collectorYellow!.number > 100;
-    return this.stats.kills >= this.stats.killsGoal && this.coins.length == 0;
+    return this.stats.kills >= this.stats.killsGoal && this.getEnemies().length == 0;
   }
 
 
   onUpdate(dt: number) {
+
+    super.onUpdate(dt);
 
     if (this.winCondition && !this.winConditionCriteria()) {
       this.winCondition = false;
@@ -277,23 +330,26 @@ class GameState implements State {
 
       // Score the rest
       this.levelScore += this.collectorCoin!.number;
-      this.collectorCoin!.number = 0;
+      // this.collectorCoin!.number = 0;
 
-      this.autopilot = true;
+      sound(SND_HIGHSCORE);
+
+      setTimeout(() => {
+        this.autopilot = true;
+      }, 2000);
 
       this.winTimeout = setTimeout(() => {
-        sound(SND_HIGHSCORE);
 
         finalState.result.status = 1;
         finalState.result.kills = this.stats.kills;
         finalState.result.score = this.levelScore;
         gameStateMachine.setState(finalState);
 
-      }, 4000);
+      }, 5000);
 
     }
 
-    ////////////////////////////////
+    /////////////
     // LEVEL DIFICULTY DINAMIC CONTROL
 
     if (this.gameLevelTimer.elapsed()) {
@@ -307,7 +363,7 @@ class GameState implements State {
 
       switch (1 + GameConfig.levelCurrentIndex) {
         case 1:
-          setPlayerPropertyValue([2.5, 0, .1, 10, 30]);
+          setPlayerPropertyValue([1, 0, .1, 10, 30]);
           break;
         case 2:
           setPlayerPropertyValue([2, 1, .06, 12, 50]);
@@ -335,23 +391,23 @@ class GameState implements State {
 
         default:
 
-          GameConfig.playerSize = rand(30, 100);
-          GameConfig.playerBulletType = BULLET_TYPE_BULLET;
-          GameConfig.playerBulletSize = rand(4, 15);
-          GameConfig.playerBulletSpeed = rand(10, 20);
+          // GameConfig.playerSize = rand(30, 100);
+          // GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+          // GameConfig.playerBulletSize = rand(4, 15);
+          // GameConfig.playerBulletSpeed = rand(10, 20);
 
-          GameConfig.playerShootPattern = randInt(0, PLAYER_SHOOT_PATTERN_MODES.length - 1);
-          const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
+          // GameConfig.playerShootPattern = randInt(0, PLAYER_SHOOT_PATTERN_MODES.length - 1);
+          // const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
 
-          GameConfig.playerShootCoolDownValue = currentMode.cooldown; // rand(.001, .1);
-          GameConfig.playerShootSpreadAngle = currentMode.spreadAngle;  //randInt(10, 30);
+          // // GameConfig.playerShootCoolDownValue = currentMode.cooldown; // rand(.001, .1);
+          // GameConfig.playerShootSpreadAngle = currentMode.spreadAngle;  //randInt(10, 30);
           break;
       }
 
       // Apply changed properties for all
       this.units.forEach(unit => unit.setDynamicProperties());
 
-      this.gameLevelTimer.set(1); // every 5 seconds
+      this.gameLevelTimer.set(.5); // every 5 seconds
     }
 
 
@@ -431,7 +487,7 @@ class GameState implements State {
 
 
       // if (this.getEnemies().length > 500)
-      this.enemySpawnTimer.set(this.getEnemies().length > 10 ? GameConfig.enemySpawnTime * 2 : GameConfig.enemySpawnTime);
+      this.enemySpawnTimer.set(this.getEnemies().length > 5 ? GameConfig.enemySpawnTime * 2 : GameConfig.enemySpawnTime);
     }
 
 
@@ -440,16 +496,16 @@ class GameState implements State {
     });
 
 
-    // if (controls.isEscape) {
-    //   gameStateMachine.setState(introState);
-    // }
+    if (controls.isEscape) {
+      gameStateMachine.setState(pauseState);
+    }
 
 
     // Enemy target designation
     enemyTargetDesignation(this.units);
 
 
-    //////////////////////////////////
+    ///////////////
     // DAMAGE MANAGER BEFORE PHYSICS COLLISION
 
     // Unit vs Unit: Damage both units
@@ -514,7 +570,7 @@ class GameState implements State {
       });
 
 
-    //////////////////////////////////
+    ///////////////
     // PHYSICS COLLISION MANAGER
 
     const useCases = [
@@ -544,7 +600,7 @@ class GameState implements State {
     });
 
 
-    //////////////////////////////////
+    ///////////////
     // COLLISION EVENTS
 
     // Touched coins => Collected coins
@@ -691,7 +747,7 @@ class GameState implements State {
 
     });
 
-    /////////////////////////////
+    /////////////
     // UPDATE OBJECTS
 
     [...this.units, ...this.bullets, ...this.coins, ...this.explosions, ...this.collectors]
@@ -703,7 +759,7 @@ class GameState implements State {
       });
 
 
-    /////////////////////////////
+    /////////////
     // DRAW OBJECTS
 
     [...this.units,
@@ -741,7 +797,7 @@ class GameState implements State {
     drawEngine.context.restore();
 
 
-    /////////////////////////////
+    /////////////
     // DRAW HEADER
 
     // drawEngine.drawText('' + time.toFixed(2), 30, drawEngine.canvasWidth * .95, 40, 'white', 'right');
@@ -760,11 +816,11 @@ class GameState implements State {
     //   drawEngine.drawText('' + this.currentMessage, 40, drawEngine.canvasWidth * .5, 120, 'white', 'center');
 
     // let message = `${this.stats.kills} of ${this.stats.killsGoal}`;
-    
+
     drawEngine.drawText(`💀 ${GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] - this.stats.kills}`, 50, drawEngine.canvasWidth * .1, 200, 'white', 'center');
 
     if (!this.hintTimer.elapsed())
-      drawEngine.drawText(`💀 DESTROY `+ currentKillsGoalPercent*100 +`% EMENIES!`, 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
+      drawEngine.drawText(`💀 DESTROY ` + currentKillsGoalPercent * 100 + `% EMENIES!`, 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
 
 
     // drawEngine.drawText(`Enemies: ${this.stats.killsGoal - this.stats.kills} of ${this.stats.killsGoal}`, 60, drawEngine.canvasWidth * .95, 350, 'white', 'right');
@@ -800,10 +856,13 @@ class GameState implements State {
       // gameStateMachine.setState(introState);
     }
 
-    menu2State.renderScoreBar();
+
+    this.menuRender(0);
+
 
     // CURSOR 
     drawEngine.drawCircle(inputMouse.pointer.Position, 60, { stroke: transparent, fill: colorShadow });
+    // drawEngine.drawText(''+ inputMouse.pointer.identifier, 30, inputMouse.pointer.Position.x, inputMouse.pointer.Position.y - 200, 'white', 'center');
 
     // PARTICLES
     !debug.showWires && globalParticles.forEach(_ => _.draw(drawEngine.context));
@@ -821,7 +880,7 @@ class GameState implements State {
       list.push(value);
     }
 
-    return list ;
+    return list;
   }
 
 
@@ -928,7 +987,8 @@ class GameState implements State {
     // game Coin
     if (enemy.number > 0 && enemy.number != 13) {
 
-      setTimeout(() => {
+      // Not all enemies drop coin
+      Math.random()>.4 && setTimeout(() => {
         let coin = CollectibleFactory.createCollectible(COIN_YELLOW, { position, size });
         coin.maxVelocity = 2;
         coin.number = enemy.number;
@@ -1095,13 +1155,6 @@ class GameState implements State {
 
     sound(SND_COIN);
     coin.destroy();
-  }
-
-
-  mouseDown() {
-    // let explosion = new Explosion(inputMouse.pointer.Position, new Vector(50,50), TEAM_A, 100, this.player!);
-    // explosion.Mass = 100;
-    // this.explosions.push(explosion);
   }
 
 
@@ -1304,6 +1357,34 @@ class GameState implements State {
     this.labels.push(label);
   }
 
+
+  /// CUSTOM RENDER MENU IN GAME
+  menuRender(refY?: number) {
+
+    this.renderScoreBar();
+
+    this.menuButtons
+      .forEach((menu, index) => {
+        // Set button position based on render position
+        menu.Position = this.getRenderPosition(menu, index);
+        menu._draw(drawEngine.context);
+      });
+
+
+  }
+  getRenderPosition(menu: Button, index: number) {
+    switch (index) {
+      case 0:
+        return new Vector(drawEngine.canvasWidth * .95, 150);
+        case 1:
+          return new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .8);
+          case 2:
+            return new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .9);
+          }
+    return new Vector(drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .5);
+
+  }
+
 }
 
 export const gameState = new GameState();
@@ -1311,11 +1392,11 @@ export const gameState = new GameState();
 
 function setPlayerPropertyValue(values: number[] = [1, 0, .1, 10, 30], type = BULLET_TYPE_BULLET) {
   GameConfig.enemySpawnTime = values[0]; // 1
-  GameConfig.playerShootPattern = values[1]; // 0
-  GameConfig.playerShootCoolDownValue = values[2]; // .1
-  GameConfig.playerBulletSize = values[3]; // 10
-  GameConfig.playerBulletDamagePoints = values[4]; // 30
-  GameConfig.playerBulletType = type; //BULLET_TYPE_BULLET;
+  // GameConfig.playerShootPattern = values[1]; // 0
+  // GameConfig.playerShootCoolDownValue = values[2]; // .1
+  // GameConfig.playerBulletSize = values[3]; // 10
+  // GameConfig.playerBulletDamagePoints = values[4]; // 30
+  // GameConfig.playerBulletType = type; //BULLET_TYPE_BULLET;
 }
 
 function enemyTargetDesignation(Units: Shooter[]) {

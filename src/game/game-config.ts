@@ -16,7 +16,7 @@ export const HINTS = [
 
 export const PLAYER_SHOOT_PATTERN_MODES: { origin: number[]; dest: number[]; spreadAngle:number; cooldown: number; }[] = [
 
-  { origin: [0], dest: [0], spreadAngle: 0, cooldown: 1, }, // single straight bullet
+  { origin: [0], dest: [0], spreadAngle: 0, cooldown: .1, }, // single straight bullet
 
   { origin: [-1, 1], dest: [0, 0], spreadAngle: Math.PI/180*15, cooldown: .05, }, // double straight bullet
 
@@ -87,8 +87,9 @@ export const GameConfig = {
   enemyMaxAcceleration: 1000,
   enemyPathPattern: 0,
   
-  levelEnemyCount: [8,10,15,20,27,36,50,66,90,120,160,220,300], 
+  levelEnemyCount: [8,10,15,20,27,36,50,66,90,120,160,220,300].map(_ => _*2), 
 
+  levelCurrentData: [],
   levelCurrentIndex: 0,
   levelGoalCurrentIndex: 0,
 
