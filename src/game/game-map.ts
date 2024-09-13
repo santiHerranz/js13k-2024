@@ -3,8 +3,7 @@ import { drawEngine } from "@/core/draw-engine";
 import TileMap from "./tilemap";
 import { GameTile } from "./game-tile";
 
-export const GameMapTheme = { sea: 0 ,forest: 1}; //,  dessert: 1, other: 2, snow: 3
-export const themeCollection = [GameMapTheme.sea, GameMapTheme.forest]; //, GameMapTheme.dessert, GameMapTheme.other, GameMapTheme.snow
+export const GameMapTheme = { sea: 0 , coast: 1, forest: 2,  dessert: 3, snow: 4}; //: 1, other: 2
 
 export class GameMap {
 
@@ -23,7 +22,7 @@ export class GameMap {
 
     maxOffsetY = 1920*this.multiple;
 
-    constructor(seed = 81962, theme = GameMapTheme.forest) {
+    constructor(theme = GameMapTheme.sea, seed = 81962) {
     
         this.dim = new Vector(49, 96*this.multiple);
         this.size = new Vector(44, 44);
@@ -47,12 +46,12 @@ export class GameMap {
         if (!this.imageCache) {
 
             var palette = [
-                // ["#1ba5e1", "#1ba5e1", "#e5d9c2", "#48893e", "#564d40"], // sea
                 ["#265998", "#265998", "#265998", "#48893e", "#564d40"], // sea
+                ["#1ba5e1", "#1ba5e1", "#e5d9c2", "#48893e", "#564d40"], // coast
                 ["#fff", "#28691e", "#38792e", "#48893e", "#564d40"],    // forest
-                // ["#F0E2AE", "#F2CA9D", "#E7A885", "#CE8A7A", "#C37F7C"], // dessert
+                ["#F0E2AE", "#F2CA9D", "#E7A885", "#CE8A7A", "#C37F7C"], // dessert
+                ["#fff", "#ddd", "#bbb", "#999", "#777"],                // snow
                 // ["#FE6927", "#FFD85F", "#FEE8AA", "#FCEC9C", "#FFE293"], // other
-                // ["#fff", "#ddd", "#bbb", "#999", "#777"], // snow
             ];
 
             var colors = palette[this.theme];

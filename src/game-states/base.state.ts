@@ -125,7 +125,7 @@ export class BaseState implements State {
 
     const newLocal = drawEngine.canvasHeight * .07;
     // 
-    drawEngine.drawText(`Level : ${1 + GameConfig.levelCurrentIndex}`, 50, drawEngine.canvasWidth * .1, newLocal + 10, 'white', 'center');
+    drawEngine.drawText(`Zone : ${1 + GameConfig.levelCurrentIndex}`, 50, drawEngine.canvasWidth * .12, newLocal + 10, 'white', 'center');
 
     [
       // { icon: gameIcons.heart, value: GameConfig.playerHearts, pos: .72 },

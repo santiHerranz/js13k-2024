@@ -1,3 +1,4 @@
+import { colorTransludid } from "@/game/game-colors";
 import { drawEngine } from "./draw-engine";
 import { inputMouse } from "./input-mouse";
 import { Vector } from "./vector";
@@ -42,6 +43,7 @@ export class Button {
 
   index = 0;
   name: string;
+  data: any;
   text: string;
   timer: Timer | undefined;
   timerLoad: Timer | undefined;
@@ -65,8 +67,8 @@ export class Button {
   constructor(props: ButtonProps, text = "", fontSize: number = 70, colors: ButtonColors = {
     'default': {
       text: '#ddd',
-      color: 'rgb(150,150,150,.3)',
-      lineWidth: 2,
+      color: colorTransludid,
+      lineWidth: 4,
       lineColor: '#ccc',
       fontSize: fontSize * 1.1,
     },
@@ -191,47 +193,16 @@ export class Button {
 
     ctx.save();
 
-    if (this.timer?.isSet()) {
-      ctx.save();
-      
-      ctx.strokeStyle = 'red';
-      ctx.lineWidth = 15;
-      // ctx.beginPath();
-      // ctx.rotate(-PI/2);
-      // ctx.moveTo(this.Size.x/2, 0);
-      // // ctx.arc(0, 0, this.Size.x / 2, 0, PI * 2 - PI * 2 * this.timer!.p100());
-      // ctx.arc(0, 0, this.Size.x/2, 0, PI * 2 - PI * 2 * this.timer!.p100());
-      // ctx.arc(0, 0, this.Size.x/2, PI * 2 - PI * 2 * this.timer!.p100(), 0, true);
-      // ctx.closePath();
-      // ctx.stroke();
+    // if (this.timer?.isSet()) {
+    //   ctx.save();
+    //   ctx.strokeStyle = 'red';
+    //   ctx.lineWidth = 15;
+    //   this.drawArc(ctx, this.Size.x, PI * 2 - PI * 2 * this.timer!.p100(), true);
+    //   ctx.restore();
+    // }
+    this.timer && this.drawTimerActive(ctx, this.timer, 'red', 15);
 
-      // Dibuja el primer arco en avance
-      this.drawArc(ctx, this.Size.x, PI * 2 - PI * 2 * this.timer!.p100(), true);
-
-
-      ctx.restore();
-    }
-
-    if (this.timerLoad?.isSet()) {
-      ctx.save();
-      
-      ctx.strokeStyle = 'gray';
-      ctx.lineWidth = 15;
-      // ctx.beginPath();
-      // // ctx.scale(-1,1)
-      // ctx.rotate(-PI/2);
-      // ctx.moveTo(this.Size.x/2, 0);
-      // // ctx.arc(0, 0, this.Size.x / 2, 0, PI * 2 - PI * 2 * this.timer!.p100());
-      // ctx.arc(0, 0, this.Size.x/2, 0, PI * 2 * this.timerLoad!.p100());
-      // ctx.arc(0, 0, this.Size.x/2, PI * 2 * this.timerLoad!.p100(), 0, true);
-      // ctx.closePath();
-      // ctx.stroke();
-
-      // Dibuja el segundo arco en reverso
-      this.drawArc(ctx, this.Size.x, PI * 2 * this.timerLoad!.p100());
-
-      ctx.restore();
-    }
+    this.timerLoad && this.drawTimerActive(ctx, this.timerLoad, 'gray', 15);
 
 
     if (this.enabled && (this.state == BUTTON_STATUS_HOVER || this.state == BUTTON_STATUS_ACTIVE)) {
@@ -267,9 +238,9 @@ export class Button {
     drawEngine.drawText(this.text, props?.fontSize!, 0, 0, props?.text); //  this.index +'. '+
 
 
-    // // text outside
-    // if (this.enabled)
-    //   drawEngine.drawText(this.data, props.fontSize * .5, 0, 0, props.text);
+    // text outside
+    if (this.data != undefined)
+      drawEngine.drawText(this.data, props?.fontSize! * .5, 0, 0, props?.text);
 
     ctx.globalAlpha = 1;
 
@@ -287,6 +258,16 @@ export class Button {
     //   ctx.stroke();
     // }
 
+  }
+
+  private drawTimerActive(ctx: CanvasRenderingContext2D, timer: Timer , color: string, lineWidth: number) {
+    if (timer.isSet()) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      this.drawArc(ctx, this.Size.x, PI * 2 * timer.p100());
+      ctx.restore();
+    }
   }
 
   drawArc(ctx: CanvasRenderingContext2D, size: number, angle: number, reverse = false) {

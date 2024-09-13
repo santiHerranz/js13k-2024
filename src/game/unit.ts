@@ -18,6 +18,10 @@ export class Unit extends GameObject {
     private _maxHealthPoints: number = 100;
     private _healthPoints: number = this._maxHealthPoints;
 
+    // Shield
+    private _maxShieldPoints: number = 0;
+    private _shieldPoints: number = this._maxShieldPoints;
+
 
     damagePoints: number;
     damageRange: number;
@@ -43,11 +47,34 @@ export class Unit extends GameObject {
         return this._healthPoints;
     }    
 
+    public get shieldRatio(): number {
+        return this._shieldPoints/this._maxShieldPoints;
+    }
+
+    public get maxShieldPoints(): number {
+        return this._maxShieldPoints;
+    }
+    public set maxShieldPoints(value: number) {
+        this._maxShieldPoints = value;
+        this._shieldPoints = value;
+    }
+
+    public get shieldPoints(): number {
+        return this._shieldPoints;
+    }    
+
+
     applyDamage(value: number) {
         this.hits = Math.round(value/10);
-        this._healthPoints -= value;
-        this._healthPoints = Math.max(0,this._healthPoints);
-        // console.log('applyDamage: '+ this._healthPoints +' ' + value);
+        if (this.shieldPoints == 0) {
+            this._healthPoints -= value;
+            this._healthPoints = Math.max(0,this._healthPoints);
+            // console.log('applyDamage: '+ this._healthPoints +' ' + value);
+        } else {
+            this._shieldPoints -= value;
+            this._shieldPoints = Math.max(0,this._shieldPoints);
+            // console.log('applyDamage: '+ this._shieldPoints +' ' + value);
+        }
       }
 
     constructor(props: UnitProperties, team: number) {

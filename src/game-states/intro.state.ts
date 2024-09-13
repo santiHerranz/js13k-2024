@@ -5,14 +5,14 @@ import { canvas, planeSprite, time } from "@/index";
 import { Button } from "@/core/button";
 import { inputMouse } from "@/core/input-mouse";
 import { GameConfig } from "../game/game-config";
-import { menu2State } from "./menu.state copy";
+import { menuState } from "./menu.state";
 import { Vector } from "@/core/vector";
 import { Timer } from "@/utils";
 
 
 const xCenter = drawEngine.context.canvas.width / 2;
 
-class Intro2State extends BaseState {
+class IntroState extends BaseState {
 
 
   onEnter() {
@@ -25,8 +25,8 @@ class Intro2State extends BaseState {
     // start.timer = new Timer(10);
 
     start.clickAction = () => {
-      menu2State.backState = this;
-      gameStateMachine.setState(menu2State);
+      menuState.backState = this;
+      gameStateMachine.setState(menuState);
     };
     this.menuButtons.push(start);
 
@@ -125,4 +125,4 @@ class Intro2State extends BaseState {
 
 }
 
-export const intro2State = new Intro2State();
+export const introState = new IntroState();

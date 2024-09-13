@@ -1,5 +1,4 @@
-import { COIN_TYPE, Coin, COIN_YELLOW, COIN_COLLECTED, COIN_RED as COIN_GRAY, COIN_TOUCHED } from "./game-coin";
-import { Bomb } from "./game.bomb";
+import { COIN_TYPE, Coin, COIN_YELLOW, COIN_COLLECTED, COIN_RED, COIN_TOUCHED, COIN_COLLECTOR, COIN_BLUE } from "./game-coin";
 import { UnitProperties } from "./unit";
 
 
@@ -12,15 +11,20 @@ export class CollectibleFactory {
     switch (type) {
       case COIN_YELLOW:
       case COIN_TOUCHED:
-      case COIN_COLLECTED:
-      case COIN_GRAY:
-        let coin = new Coin(type, props);
+        case COIN_COLLECTED:
+          case COIN_COLLECTOR:
+            case COIN_BLUE:
+              case COIN_RED:
+                let coin = new Coin(type, props);
 
         switch (type) {
           case COIN_YELLOW: coin.color = 'yellow'; break;
           case COIN_TOUCHED: coin.color = 'yellow'; break;
           case COIN_COLLECTED: coin.color = 'yellow'; break;
-          case COIN_GRAY: coin.color = 'gray'; break;
+          case COIN_COLLECTOR: coin.color = 'gray'; break;
+          case COIN_RED: coin.color = 'red'; break;
+          case COIN_BLUE: coin.color = 'blue'; break;
+          
         }
         return coin;
 

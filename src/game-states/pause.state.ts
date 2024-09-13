@@ -2,7 +2,7 @@
 // import { gameStateMachine } from '@/game-state-machine';
 // import { gameState } from './game.state';
 // import { Button } from '@/core/button';
-// import { menu2State } from './menu.state copy';
+// import { menuState } from './menu.state copy';
 
 
 // const buttonProps = { x: 0, y: 0, w: 400, h: 150 };
@@ -23,7 +23,7 @@
 
 //     const back = new Button(buttonProps, 'Exit', "");
 //     back.clickAction = () => {
-//       gameStateMachine.setState(menu2State);
+//       gameStateMachine.setState(menuState);
 //     };
 //     this.menuButtons.push(back);
 

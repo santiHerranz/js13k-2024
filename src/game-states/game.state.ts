@@ -14,8 +14,8 @@ import { inputMouse } from '@/core/input-mouse';
 import { Unit } from '@/game/unit';
 import { GameObject } from '@/game-object';
 import { Shooter } from '@/game/unit.shooter';
-import { BULLET_TYPE_BULLET, BULLET_TYPE_FIREBALL, createBullet } from '@/game/game-weapons';
-import { backButton, gameIcons, HINTS, PLAYER_SHOOT_PATTERN_MODES } from '../game/game-config';
+import { createBullet } from '@/game/game-weapons';
+import { backButton, defaultExplosionTime, gameIcons, HINTS, PLAYER_SHOOT_PATTERN_MODES as SHOOT_PATTERN_MODES } from '../game/game-config';
 import { Bullet } from '@/game/unit.bullet';
 import { Explosion } from '@/game/unit.explosion';
 import { GameConfig } from '../game/game-config';
@@ -23,17 +23,16 @@ import { transparent } from "@/game/game-colors";
 import { colorShadow } from "@/game/game-colors";
 import { sound } from '@/core/sound';
 import { GameMap, GameMapTheme } from '@/game/game-map';
-import { defaultExplosionTime, Fireball } from '@/game/unit-fireball';
-import { Coin, COIN_YELLOW, COIN_RED, COIN_BLUE, COIN_TOUCHED } from '@/game/game-coin';
+import { Coin, COIN_YELLOW, COIN_RED, COIN_BLUE, COIN_TOUCHED, COIN_COLLECTOR } from '@/game/game-coin';
 import { globalParticles } from '@/game/game-particle';
 import { Collector } from '@/game/game-collector';
 import { Label } from '@/game/game-label';
 import { CollectibleFactory } from '@/game/game-collectible';
 import { Bomb } from '@/game/game.bomb';
 import { finalState } from './final.state';
-import { menu2State } from './menu.state copy';
+import { menuState } from './menu.state';
 import { debug } from '@/game/game-debug';
-import { SND_ARROW_SHOOT, SND_BIG_EXPLOSION, SND_COIN, SND_DEATH, SND_EXPLOSION, SND_HIGHSCORE, SND_TICTAC } from '@/game/game-sound';
+import { SND_ARROW_SHOOT, SND_BIG_EXPLOSION, SND_COIN, SND_DEATH, SND_EXPLOSION, SND_HIGHSCORE, SND_WEAPON_COLLECTED, SND_TICTAC, SND_SHIELD_COLLECTED } from '@/game/game-sound';
 import { BaseState } from './base.state';
 import { Button } from '@/core/button';
 
@@ -51,8 +50,9 @@ const buttonProps = { x: 0, y: 0, w: 300, h: 150, r: 100 };
 
 
 const ENEMY_PATH = [
-  [new Vector(100, 350), new Vector(100, 1200), new Vector(1000, 1200), new Vector(1000, 350)],
-  // [new Vector(-100, 1200), new Vector(1200, 350)],
+  { start: new Vector(drawEngine.canvasWidth * .5, -200), path: [new Vector(100, 350), new Vector(100, 1500), new Vector(1000, 1500), new Vector(1000, 350)] },
+  // [new Vector(-100, -100), new Vector(drawEngine.canvasWidth*.5, 1000)],
+  // {start: new Vector(drawEngine.canvasWidth*.5, -200), path: [ new Vector(drawEngine.canvasWidth*.5, 200), new Vector(drawEngine.canvasWidth*.5, 1000) ]},
 ];
 
 class GameState extends BaseState {
@@ -74,10 +74,13 @@ class GameState extends BaseState {
 
   collectors: Collector[] = [];
   collectorCoin: Collector | undefined;
+  collectorWeapon: Collector | undefined;
+  collectorShield: Collector | undefined;
 
   // Map
-  gameMap: GameMap;
+  gameMap: GameMap | undefined;
   seed: number = .601; // Math.random() //
+  theme = GameMapTheme.sea;
 
   playerAlive: boolean;
 
@@ -105,7 +108,10 @@ class GameState extends BaseState {
   autopilot: boolean = false;
   winTimeout: NodeJS.Timeout | undefined;
   abandon: boolean = false;
+  enemySpawnLeftOrRight = 0;
 
+  shieldButton: Button | undefined;
+  weaponButton: Button | undefined;
 
   constructor() {
     super();
@@ -113,9 +119,7 @@ class GameState extends BaseState {
 
     this.playerAlive = false;
 
-
-    this.gameMap = new GameMap(this.seed, GameMapTheme.sea);
-    this.gameMap.speed = 2.5; // 0.096
+    this.setTheme();
 
 
     this.collisionTree = new Quadtree({
@@ -123,6 +127,13 @@ class GameState extends BaseState {
       height: drawEngine.canvasHeight,
       maxObjects: 3
     });
+  }
+
+  setTheme(theme = GameMapTheme.sea, seed: number = Math.random()) {
+    this.seed = seed;
+    this.theme = theme;
+    this.gameMap = new GameMap(theme, seed);
+    this.gameMap.speed = 2.5; // 0.096    
   }
 
   // INPUT CONTROLS
@@ -164,10 +175,6 @@ class GameState extends BaseState {
     return this.bullets.filter(f => f.team == team);
   }
 
-  repairPlayer() {
-    GameConfig.playerScore -= GameConfig.repairCost;
-  }
-
   onEnter() {
 
     /////////////
@@ -175,62 +182,67 @@ class GameState extends BaseState {
     this.menuButtons = [];
 
     // Eject 
-    let eject = new Button({ x: 0, y: 0, w: 60, h: 50 }, backButton.label, backButton.fontSize);
-    eject.index = -1;
-    eject.keyboardDisabled = true;
-    eject.clickAction = () => {
+    let ejectButton = new Button({ x: 0, y: 0, w: 60, h: 50 }, backButton.label, backButton.fontSize);
+    ejectButton.index = -1;
+    ejectButton.keyboardDisabled = true;
+    ejectButton.clickAction = () => {
       this.abandon = true;
       setTimeout(() => {
-        gameStateMachine.setState(menu2State);
+        gameStateMachine.setState(menuState);
       }, 2000);
     };
-    this.menuButtons.push(eject);
+    this.menuButtons.push(ejectButton);
 
     // SHIELD BUTTON
-    let shield = new Button({ x: 0, y: 0, r: 60 }, '🛡', 80);
-    shield.index = 1;
-    shield.clickAction = () => {
-      this.player!.maxHealthPoints = 20000;
-      shield.enabled = false;
-      shield.timer?.set(GameConfig.playerShieldTime);
+    let shieldButton = new Button({ x: 0, y: 0, r: 60 }, '🛡', 80);
+    shieldButton.index = 1;
+    shieldButton.data = GameConfig.playerShieldCount;
+    shieldButton.clickAction = () => {
+      if (shieldButton.enabled) {
+        this.reloadShield(shieldButton);
+        shieldButton.timer?.set(GameConfig.playerShieldReloadTime);
+      }
     };
 
-    shield.timer = new Timer(undefined);
-    shield.timerLoad = new Timer(undefined);
-    shield.timer.elapsedAction = () => { 
-      this.player!.maxHealthPoints = 100;
-      shield.timerLoad?.set(GameConfig.playerSuperWeaponReloadTime);
-      // setTimeout(() => {
-      // }, GameConfig.playerShieldReloadTime *1000);
+    shieldButton.timer = new Timer(undefined);
+    shieldButton.timerLoad = new Timer(undefined);
+    shieldButton.timer.elapsedAction = () => {
+      shieldButton.timerLoad?.set(GameConfig.playerSuperWeaponReloadTime);
     };
-    shield.timerLoad.elapsedAction = () => { 
-      shield.enabled = true;
+    shieldButton.timerLoad.elapsedAction = () => {
+      shieldButton.enabled = true;
     };
+    this.shieldButton = shieldButton;
 
-    this.menuButtons.push(shield);
+    this.menuButtons.push(shieldButton);
 
     // WEAPON BUTTON
-    let weapon = new Button({ x: 0, y: 0, r: 60 }, '🔥', 80); //, { default: { lineWidth: 0 }}
-    weapon.index = 0;
-    weapon.clickAction = () => {
-      this.playerChangeWeapon(3);
-      weapon.enabled = false;
-      weapon.timer?.set(GameConfig.playerSuperWeaponTime);
+    let weaponButton = new Button({ x: 0, y: 0, r: 60 }, '🔥', 80); //, { default: { lineWidth: 0 }}
+    weaponButton.index = 0;
+    weaponButton.data = GameConfig.playerBoostWeaponCount;
+    weaponButton.clickAction = () => {
+      if (weaponButton.enabled) {
+        this.playerChangeWeapon(this.getWeapon(GameConfig.levelCurrentIndex, true));
+        weaponButton.enabled = false;
+        weaponButton.timer?.set(GameConfig.playerSuperWeaponTime);
+        weaponButton.data = --GameConfig.playerBoostWeaponCount;
+      }
     };
 
-    weapon.timer = new Timer(undefined);
-    weapon.timerLoad = new Timer(undefined);
-    weapon.timer.elapsedAction = () => { 
-      this.playerChangeWeapon(0);
-      weapon.timerLoad?.set(GameConfig.playerSuperWeaponReloadTime);
+    weaponButton.timer = new Timer(undefined);
+    weaponButton.timerLoad = new Timer(undefined);
+    weaponButton.timer.elapsedAction = () => {
+      this.playerChangeWeapon(this.getWeapon(GameConfig.levelCurrentIndex));
+      weaponButton.timerLoad?.set(GameConfig.playerSuperWeaponReloadTime);
       // setTimeout(() => {
       // }, GameConfig.playerSuperWeaponReloadTime * 1000);
     };
-    weapon.timerLoad.elapsedAction = () => { 
-      weapon.enabled = true;
+    weaponButton.timerLoad.elapsedAction = () => {
+      weaponButton.enabled = true;
     };
+    this.weaponButton = weaponButton;
 
-    this.menuButtons.push(weapon);
+    this.menuButtons.push(weaponButton);
 
 
     this.selectedMenuIndex = 1;
@@ -281,20 +293,31 @@ class GameState extends BaseState {
     // TODO Kill goal of enemies created
     this.stats.killsGoal = this.enemyValueList.length; // * currentKillsGoalPercent;
 
+    // Calculate final button position befor collectors
+    this.menuRender();
 
     let hw = drawEngine.canvasWidth / 2;
     let hh = drawEngine.canvasHeight / 2;
 
     let coinSize = new Vector(GameConfig.coinSize, GameConfig.coinSize);
-    this.collectorCoin = CollectibleFactory.createCollectible(COIN_RED, { position: new Vector(hw, 260), size: coinSize.clone().scale(1.6) });
+    this.collectorCoin = CollectibleFactory.createCollectible(COIN_COLLECTOR, { position: new Vector(hw, 260), size: coinSize.clone().scale(1.6) });
     this.collectorCoin.showBall = this.collectorCoin.showNumber = this.collectorCoin.showShadow = true;
+
+    this.collectorShield = CollectibleFactory.createCollectible(COIN_COLLECTOR, { position: this.shieldButton.Position.clone().add(new Vector(0, 100)), size: coinSize.clone().scale(1.6) });
+    this.collectorShield.showBall = this.collectorShield.showShadow = this.collectorShield.showNumber = false;
+    this.collectorWeapon = CollectibleFactory.createCollectible(COIN_COLLECTOR, { position: this.weaponButton.Position.clone().add(new Vector(0, 100)), size: coinSize.clone().scale(1.6) });
+    this.collectorWeapon.showBall = this.collectorWeapon.showShadow = this.collectorWeapon.showNumber = false;
 
     this.collectors = [];
     this.collectors.push(this.collectorCoin);
+    this.collectors.push(this.collectorWeapon);
+    this.collectors.push(this.collectorShield);
 
 
     const startPosition = new Vector(hw, hh + hh * .6);
     this.player = this.createPlayer(startPosition);
+
+    this.playerChangeWeapon(this.getWeapon(GameConfig.levelCurrentIndex));
 
     this.autopilot = false;
     this.abandon = false;
@@ -323,17 +346,37 @@ class GameState extends BaseState {
     inputMouse.addEventListener('touchmove', () => this.toucheMove());
   }
 
+  private reloadShield(shieldButton: Button) {
+    this.player!.maxHealthPoints = 100;
+    this.player!.maxShieldPoints = 100;
+    shieldButton.data = --GameConfig.playerShieldCount;
+  }
+
+  getWeapon(levelIndex: number, boosted: boolean = false): number {
+    return GameConfig.levelPlayerWeapon[levelIndex][boosted ? 1 : 0];
+  }
+
 
   private playerChangeWeapon(value: number) {
     GameConfig.playerShootPattern = value;
-    const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
+    const currentMode = SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
     GameConfig.playerShootCoolDownValue = currentMode.cooldown;
     GameConfig.playerShootSpreadAngle = currentMode.spreadAngle;
 
     // Apply changed properties for all
     this.units.forEach(unit => unit.setDynamicProperties());
-
   }
+
+  private enemyChangeWeapon(enemy: Shooter, value: number, factor: number = 1) {
+    GameConfig.enemyShootPattern = value;
+    const currentMode = SHOOT_PATTERN_MODES[value];
+    GameConfig.enemyShootCoolDownValue = currentMode.cooldown * factor;
+    GameConfig.enemyShootSpreadAngle = currentMode.spreadAngle;
+
+    // Apply changed properties for all
+    enemy.setDynamicProperties();
+  }
+
 
   onLeave() {
 
@@ -363,7 +406,7 @@ class GameState extends BaseState {
       this.winCondition = true;
 
       // Score the rest
-      this.levelScore += this.collectorCoin!.number;
+      // this.levelScore += this.collectorCoin!.number;
       // this.collectorCoin!.number = 0;
 
       sound(SND_HIGHSCORE);
@@ -386,63 +429,22 @@ class GameState extends BaseState {
     /////////////
     // LEVEL DIFICULTY DINAMIC CONTROL
 
-    if (this.gameLevelTimer.elapsed()) {
+    // if (this.gameLevelTimer.elapsed()) {
 
-      //   GameConfig.enemySpawnTime = .5;
-      //   GameConfig.playerShootPattern = 1;
-      //   GameConfig.playerShootCoolDownValue = .2;
-      //   GameConfig.playerBulletSize = 8;
-      //   GameConfig.playerBulletDamagePoints = 50;
-      //   GameConfig.playerBulletType = BULLET_TYPE_BULLET;
+    //   //   GameConfig.enemySpawnTime = .5;
+    //   //   GameConfig.playerShootPattern = 1;
+    //   //   GameConfig.playerShootCoolDownValue = .2;
+    //   //   GameConfig.playerBulletSize = 8;
+    //   //   GameConfig.playerBulletDamagePoints = 50;
+    //   //   GameConfig.playerBulletType = BULLET_TYPE_BULLET;
 
-      switch (1 + GameConfig.levelCurrentIndex) {
-        case 1:
-          setPlayerPropertyValue([1, 0, .1, 10, 30]);
-          break;
-        case 2:
-          setPlayerPropertyValue([2, 1, .06, 12, 50]);
-          break;
-        case 3:
-        case 4:
-        case 5:
-        case 6:
-        case 7:
-        case 8:
-        case 9:
-        case 10:
-        case 11:
-        case 12:
-          setPlayerPropertyValue([.4, 2, .04, 12, 50]);
+    //   setGamePropertyValue([.4, .01]);
 
-        // case 3:
-        //   GameConfig.enemySpawnTime = 1;
-        //   GameConfig.playerShootPattern = 0;
-        //   GameConfig.playerShootCoolDownValue = 2;
-        //   GameConfig.playerBulletSize = 20;
-        //   GameConfig.playerBulletDamagePoints = 200;
-        //   GameConfig.playerBulletType = BULLET_TYPE_FIREBALL;
-        //   break;
+    //   // Apply changed properties for all
+    //   this.units.forEach(unit => unit.setDynamicProperties());
 
-        default:
-
-          // GameConfig.playerSize = rand(30, 100);
-          // GameConfig.playerBulletType = BULLET_TYPE_BULLET;
-          // GameConfig.playerBulletSize = rand(4, 15);
-          // GameConfig.playerBulletSpeed = rand(10, 20);
-
-          // GameConfig.playerShootPattern = randInt(0, PLAYER_SHOOT_PATTERN_MODES.length - 1);
-          // const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
-
-          // // GameConfig.playerShootCoolDownValue = currentMode.cooldown; // rand(.001, .1);
-          // GameConfig.playerShootSpreadAngle = currentMode.spreadAngle;  //randInt(10, 30);
-          break;
-      }
-
-      // Apply changed properties for all
-      this.units.forEach(unit => unit.setDynamicProperties());
-
-      this.gameLevelTimer.set(.5); // every 5 seconds
-    }
+    //   this.gameLevelTimer.set(1); // every second
+    // }
 
 
     // SHAKE
@@ -472,7 +474,9 @@ class GameState extends BaseState {
             // gameStateMachine.setState(repairState);
             // option 2
             finalState.result.status = -1;
-            gameStateMachine.setState(finalState);            
+            finalState.result.kills = this.stats.kills;
+            finalState.result.score = this.levelScore;
+            gameStateMachine.setState(finalState);
 
           }, 2000);
         }
@@ -495,11 +499,11 @@ class GameState extends BaseState {
 
 
     // DRAW BACKGROUND MOVING
-    this.gameMap.drawTileMap(drawEngine.context, dt);
+    this.gameMap!.drawTileMap(drawEngine.context, dt);
 
 
     // ENEMY SPAWN
-    if (!this.hintTimer.isSet() && this.enemySpawnTimer.elapsed() && this.enemyValueList.length > 0) {
+    if (!this.hintTimer.isSet() && this.enemySpawnTimer.elapsed() && this.enemyValueList.length > 0 && this.getEnemies().length < 5) {
 
       let hw = drawEngine.canvasWidth / 2;
       let hh = drawEngine.canvasHeight / 2;
@@ -507,17 +511,17 @@ class GameState extends BaseState {
       const startPosition = new Vector(hw, hh);
       const sizeBase = new Vector(1, 1).scale(GameConfig.enemySize);
 
-      [...Array(1).keys()].forEach(() => { //
+      this.enemySpawnLeftOrRight = Math.random() < .5 ? 0 : 1;
 
-        const leftOrRight: number = Math.random() < .5 ? 0 : 1;
+      [...Array(1).keys()].forEach(() => { //
 
         let enemyHeightSpawnPosition = -hh * .4;
 
-        startPosition.add(new Vector(hw * (leftOrRight == 1 ? -1 : 1) * 1.2, enemyHeightSpawnPosition)); // 
+        startPosition.add(new Vector(hw * (this.enemySpawnLeftOrRight == 1 ? -1 : 1) * 1.2, enemyHeightSpawnPosition)); // 
 
         let value = this.getEnemyNextValue(); // coinValues[Math.floor(this.stats.enemiesCreated % coinValues.length-1)];
 
-        let enemy = this.enemySpawn(startPosition, sizeBase, leftOrRight, value);
+        let enemy = this.enemySpawn(startPosition, sizeBase, this.enemySpawnLeftOrRight, value);
 
         this.units.push(enemy);
       });
@@ -609,7 +613,7 @@ class GameState extends BaseState {
       // Enemy bullets vs Player
       [...this.getTeamBullets(TEAM_B), ...this.units.filter(f => f.team == TEAM_A)],
       // Player bullets vs Enemies
-      [...this.getTeamBullets(TEAM_A), ...this.getEnemies()],
+      // [...this.getTeamBullets(TEAM_A), ...this.getEnemies()],
       // All units except bombs
       [...this.units.filter(f => f.type != 'bomb')],
       // Bombs vs Player
@@ -641,7 +645,6 @@ class GameState extends BaseState {
 
         this.coins
           .filter(f => f.type == COIN_TOUCHED)
-          // .filter(f => f.number != 13)
           .some((coin: Coin) => {
 
             var collision = this.checkRange(collector, coin, collector.Radius);
@@ -654,7 +657,7 @@ class GameState extends BaseState {
 
     // Coin yellow => Touched coins
     this.coins
-      .filter(f => f.type == COIN_YELLOW)
+      // .filter(f => f.type == COIN_YELLOW)
       .forEach((coin: Coin) => {
 
         this.units
@@ -851,12 +854,12 @@ class GameState extends BaseState {
 
     // let message = `${this.stats.kills} of ${this.stats.killsGoal}`;
 
-    drawEngine.drawText(gameIcons.enemy +` ${GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] - this.stats.kills}`, 50, drawEngine.canvasWidth * .1, 200, 'white', 'center');
+    drawEngine.drawText(gameIcons.enemy + ` ${GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] - this.stats.kills}`, 50, drawEngine.canvasWidth * .1, 200, 'white', 'center');
 
 
     if (this.hintTimer.isSet()) {
-      if ( !this.hintTimer.elapsed()) {
-        drawEngine.drawText(HINTS[this.currentHint].toUpperCase() , 50, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
+      if (!this.hintTimer.elapsed()) {
+        drawEngine.drawText(HINTS[this.currentHint].toUpperCase(), 60, drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .25, 'white', 'center');
       } else if (this.currentHint < HINTS.length - 1) {
         this.currentHint++;
         this.hintTimer.set(4);
@@ -870,12 +873,21 @@ class GameState extends BaseState {
     // drawEngine.drawText(`Points: ${this.stats.maxScoreAvailable} max`, 40, drawEngine.canvasWidth * .95, 320, 'white', 'right');
     // drawEngine.drawText(`Collector: ${this.collectorCoin?.number}`, 40, drawEngine.canvasWidth * .95, 370, 'white', 'right');
 
+    // drawEngine.drawText('' + this.getEnemies().map(_ => { return _.shootCoolDownValue }).join(','), 60, drawEngine.canvasWidth * .5, 350, 'yellow', 'center');
+
 
     let currentHealthRatio = this.player!.healthPoints / this.player!.maxHealthPoints;
 
     const healthBarProps = { x: drawEngine.canvasWidth * .9 - 200, y: 180, w: 200, h: 30 };
     drawEngine.drawRectangle(new Vector(healthBarProps.x, healthBarProps.y), new Vector(healthBarProps.w, healthBarProps.h), { fill: '#fff' });
     drawEngine.drawRectangle(new Vector(healthBarProps.x, healthBarProps.y), new Vector(healthBarProps.w * currentHealthRatio, healthBarProps.h), { fill: currentHealthRatio > .5 ? '#0f0' : '#f00' });
+
+    let currentShieldRatio = this.player!.shieldPoints / this.player!.maxShieldPoints;
+
+    const shieldBarProps = { x: drawEngine.canvasWidth * .9 - 200, y: 215, w: 200, h: 15 };
+    drawEngine.drawRectangle(new Vector(shieldBarProps.x, shieldBarProps.y), new Vector(shieldBarProps.w, shieldBarProps.h), { fill: '#fff' });
+    drawEngine.drawRectangle(new Vector(shieldBarProps.x, shieldBarProps.y), new Vector(shieldBarProps.w * currentShieldRatio, shieldBarProps.h), { fill: '#00f' });
+
     // drawEngine.drawText('Health ' + this.player?.healthPoints.toFixed(0), 40, 18, 70, 'white', 'left');
 
     // drawEngine.drawText(`particles: ${globalParticles.length}` , 40, drawEngine.canvasWidth * .5, 200, 'white', 'center');
@@ -896,13 +908,21 @@ class GameState extends BaseState {
 
     if (controls.isEscape) {
       // gameStateMachine.setState(pauseState);
-      // gameStateMachine.setState(menu2State);
+      // gameStateMachine.setState(menuState);
       this.abandon = true;
       setTimeout(() => {
-        gameStateMachine.setState(menu2State);
+        gameStateMachine.setState(menuState);
       }, 2000);
     }
 
+    /////////////
+    /// Check Shield Status for automatic reload
+    if (GameConfig.playerShieldCount > 0 && this.player!.shieldPoints <= 0 && this.player!.healthPoints < this.player!.maxHealthPoints) {
+      this.reloadShield(this.shieldButton!);
+    }
+
+    this.weaponButton!.visible = GameConfig.playerBoostWeaponCount > 0;
+    this.shieldButton!.visible = GameConfig.playerShieldCount > 0;
 
     this.menuRender(0);
 
@@ -918,7 +938,7 @@ class GameState extends BaseState {
   }
 
 
-  private coinValues = [...Array(100).keys(),1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  private coinValues = [...Array(100).keys(), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   private createEnemyValueList(count: number = 1): number[] {
     let list: number[] = [];
 
@@ -946,12 +966,20 @@ class GameState extends BaseState {
 
     let size = sizeBase.clone(); //.add(new Vector(value, value))
 
-    let unitPosition = startPosition.clone().add(new Vector(rand(0, size.length()), rand(0, size.length())));
+    let enemyPath = ENEMY_PATH[0]; //randInt(0,ENEMY_PATH.length)
+    // let unitPosition = startPosition.clone().add(new Vector(rand(0, size.length()), rand(0, size.length())));
 
-    let enemy = this.createEnemy(unitPosition, size, value, color);
+    let enemyPathStart = enemyPath.start;
+    if (leftOrRight)
+      enemyPathStart.x *= -1;
+
+    let enemy = this.createEnemy(enemyPathStart, size, value, color);
+
+    let factor = 12 - 12 * GameConfig.levelCurrentIndex/12;
+    this.enemyChangeWeapon(enemy, 4,  factor);
 
     // Set Path to follow
-    enemy.path = ENEMY_PATH[GameConfig.ennemyPath];
+    enemy.path = enemyPath.path; // GameConfig.ennemyPath
 
     if (leftOrRight)
       enemy.path = enemy.path.reverse();
@@ -1012,19 +1040,20 @@ class GameState extends BaseState {
 
     let position = startPosition.clone(); // .add(Vector.rand().scale(size.length() * 2));
 
-    if (enemy.scorePoints > 0) {
+    if (GameConfig.enemyScorePoints > 0) {
       // Show Score label
-      this.createLabel(enemy.Position, '+' + enemy.scorePoints, { moveTo: Vector.createSize(50).rotate(-Math.PI / 2) });
+      this.createLabel(enemy.Position, '+' + GameConfig.enemyScorePoints, { moveTo: Vector.createSize(50).rotate(-Math.PI / 2) });
 
       // Score points
-      GameConfig.playerScore += enemy.scorePoints;
+      GameConfig.playerScore += GameConfig.enemyScorePoints;
+      this.levelScore += GameConfig.enemyScorePoints;
     }
 
     // game Coin
     if (enemy.number > 0 && enemy.number < 13) {
 
       // Not all enemies drop coin
-        setTimeout(() => {
+      setTimeout(() => {
         let coin = CollectibleFactory.createCollectible(COIN_YELLOW, { position, size });
         coin.maxVelocity = 2;
         coin.number = enemy.number;
@@ -1033,6 +1062,14 @@ class GameState extends BaseState {
         this.coins.push(coin);
       }, 100);
 
+    } else if (GameConfig.levelCurrentIndex > 0 && rand() > .7) {
+      setTimeout(() => {
+        let coin = CollectibleFactory.createCollectible(rand() > .6 ? COIN_RED : COIN_BLUE, { position, size });
+        coin.maxVelocity = 3;
+        coin.showNumber = false;
+        coin.Size = size.scale(.7);
+        this.coins.push(coin);
+      }, 100);
     }
 
     if (!(enemy instanceof Bomb))
@@ -1041,17 +1078,20 @@ class GameState extends BaseState {
   }
 
   onCoinTouched(coin: Coin) {
-    if (!coin.Active) return;
-
+    if (!coin.Active || coin.type == COIN_TOUCHED) return;
 
     switch (coin.type) {
       case COIN_RED:
-        this.player!.weaponBulletType = BULLET_TYPE_FIREBALL;
-        this.createLabel(this.collectorCoin!.Position, 'FIREBALL', { moveTo: Vector.createSize(50).rotate(PI / 2) });
+        coin.maxVelocity = 20;
+        coin.maxAcceleration = 100;
+        coin.follow = this.collectorWeapon;
+        coin.type = COIN_TOUCHED;
         break;
       case COIN_BLUE:
-        this.player!.weaponBulletType = BULLET_TYPE_BULLET;
-        this.createLabel(this.collectorCoin!.Position, 'BULLET', { moveTo: Vector.createSize(50).rotate(PI / 2) });
+        coin.maxVelocity = 20;
+        coin.maxAcceleration = 100;
+        coin.follow = this.collectorShield;
+        coin.type = COIN_TOUCHED;
         break;
 
       default:
@@ -1144,6 +1184,22 @@ class GameState extends BaseState {
   }
 
   onCoinCollected(collector: Coin, coin: Coin) {
+
+    if (coin.Active && collector == this.collectorShield && coin.color == 'blue') {
+      this.shieldButton!.data = ++GameConfig.playerShieldCount;
+      sound(SND_SHIELD_COLLECTED);
+      coin.destroy();
+      return;
+    }
+
+    if (coin.Active && collector == this.collectorWeapon && coin.color == 'red') {
+      this.weaponButton!.data = ++GameConfig.playerBoostWeaponCount;
+      sound(SND_WEAPON_COLLECTED);
+      coin.destroy();
+      return;
+    }
+
+
     if (coin.number == 0) return;
 
     if (collector.number + coin.number == 13) {
@@ -1201,6 +1257,8 @@ class GameState extends BaseState {
     enemy.number = value;
     enemy.color = color;
 
+    enemy.showShadow = false;
+
     enemy.damagePoints = GameConfig.enemyDamagePoints;
     enemy.damageRange = size.length();
 
@@ -1214,10 +1272,27 @@ class GameState extends BaseState {
     enemy.shootCoolDownValue = GameConfig.enemyShootCoolDownValue;
     enemy.shootCoolDownTimer.set(rand(enemy.shootCoolDownValue, enemy.shootCoolDownValue * 2));
 
-    enemy.shootHandler = (targetPosition, bulletSpeed: Vector) => {
+    enemy.setDynamicProperties = () => {
+
+      enemy.shootCoolDownValue = GameConfig.enemyShootCoolDownValue;
+      enemy.shootCoolDownTimer.set(enemy.shootCoolDownValue);
+      enemy.bulletSpeed = GameConfig.enemyBulletSpeed;
+
+    };
+    enemy.setDynamicProperties();
+
+    enemy.shootHandler = (targetPosition, bulletVelocity: Vector) => {
       let bulletSize = new Vector(GameConfig.enemyBulletSize, GameConfig.enemyBulletSize);
 
-      let enemyBullet = createBullet(GameConfig.enemyBulletType, enemy, bulletSize, bulletSpeed, new Vector(0, 0), targetPosition);
+
+      const currentMode = SHOOT_PATTERN_MODES[GameConfig.enemyShootPattern];
+      if (++enemy.shotPhase > currentMode.dest.length)
+        enemy.shotPhase = 0;
+      let initOffset = new Vector(currentMode.origin[enemy.shotPhase] * enemy.Size.x);
+      bulletVelocity.rotate(currentMode.dest[enemy.shotPhase] * GameConfig.enemyShootSpreadAngle); //   currentMode.spreadAngle GameConfig.playerShootSpreadAngle);
+
+
+      let enemyBullet = createBullet(enemy, bulletSize, bulletVelocity, initOffset, targetPosition);
       // same height
       enemyBullet._z = enemy._z;
 
@@ -1235,11 +1310,6 @@ class GameState extends BaseState {
         explosion.color = enemy.color;
         explosion.damagePoints = GameConfig.enemyBulletExplosionDamagePoints;
 
-        if (enemyBullet instanceof Fireball) {
-          // no color for fire explosion
-          explosion.color = '';
-          explosion.range = 100;
-        }
         this.explosions.push(explosion);
 
       };
@@ -1286,8 +1356,6 @@ class GameState extends BaseState {
 
         player.setDynamicProperties = () => {
 
-          player.weaponBulletType = GameConfig.playerBulletType;
-
           player.color = '#C0C0C0';
 
           player.shootCoolDownValue = GameConfig.playerShootCoolDownValue;
@@ -1305,17 +1373,13 @@ class GameState extends BaseState {
 
           let bulletSize = new Vector(GameConfig.playerBulletSize, GameConfig.playerBulletSize);
 
-          const currentMode = PLAYER_SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
-
+          const currentMode = SHOOT_PATTERN_MODES[GameConfig.playerShootPattern];
           if (++player.shotPhase > currentMode.dest.length)
             player.shotPhase = 0;
-
           let initOffset = new Vector(currentMode.origin[player.shotPhase] * player.Size.x);
-
-
           bulletVelocity.rotate(currentMode.dest[player.shotPhase] * GameConfig.playerShootSpreadAngle); //   currentMode.spreadAngle GameConfig.playerShootSpreadAngle);
 
-          let playerBullet = createBullet(player.weaponBulletType, player, bulletSize, bulletVelocity, initOffset, bulletTargetPosition);
+          let playerBullet = createBullet(player, bulletSize, bulletVelocity, initOffset, bulletTargetPosition);
 
           // sound(SND_SHOOT);
 
@@ -1326,17 +1390,7 @@ class GameState extends BaseState {
           playerBullet.explode = (position: Vector) => {
 
             // No explosion for all bullets
-            if (rand(1) > .1) return;
-
-            if (playerBullet instanceof Fireball) {
-              let explosion = new Explosion({ position, size: bulletSize }, player.team, .01 * bulletSize.length());
-              explosion.Mass = 100;
-              explosion.color = player.color;
-              explosion.damagePoints = GameConfig.playerBulletExplosionDamagePoints;
-              this.explosions.push(explosion);
-              // sound(SND_EXPLOSION);
-
-            }
+            // if (rand(1) > .1) return;
 
             if (playerBullet instanceof Bullet) {
             };
@@ -1414,14 +1468,14 @@ class GameState extends BaseState {
 
 
   getRenderPosition(menu: Button, index: number) {
-    switch (menu.index) { 
+    switch (menu.index) {
       case -1:
         return new Vector(drawEngine.canvasWidth * .1, backButton.posY);
-      case 0:
+      case 0: // shield
         return new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .75);
-        case 1:
-          return new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .85);
-      }
+      case 1:
+        return new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .85);
+    }
     return new Vector(drawEngine.canvasWidth * .5, drawEngine.canvasHeight * .5);
 
   }
@@ -1431,14 +1485,10 @@ class GameState extends BaseState {
 export const gameState = new GameState();
 
 
-function setPlayerPropertyValue(values: number[] = [1, 0, .1, 10, 30], type = BULLET_TYPE_BULLET) {
-  GameConfig.enemySpawnTime = values[0]; // 1
-  // GameConfig.playerShootPattern = values[1]; // 0
-  // GameConfig.playerShootCoolDownValue = values[2]; // .1
-  // GameConfig.playerBulletSize = values[3]; // 10
-  // GameConfig.playerBulletDamagePoints = values[4]; // 30
-  // GameConfig.playerBulletType = type; //BULLET_TYPE_BULLET;
-}
+// function setGamePropertyValue(values: number[] = [1, 1]) {
+//   GameConfig.enemySpawnTime = values[0];
+//   GameConfig.enemyShootCoolDownValue = values[1];
+// }
 
 function enemyTargetDesignation(Units: Shooter[]) {
 

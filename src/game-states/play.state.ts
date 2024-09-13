@@ -5,12 +5,13 @@ import { drawEngine } from '@/core/draw-engine';
 import { Button } from '@/core/button';
 import { Vector } from '@/core/vector';
 import { inputMouse } from '@/core/input-mouse';
-import { menu2State } from './menu.state copy';
+import { menuState } from './menu.state';
 import { backButton, GameConfig, gameIcons, HINTS } from '@/game/game-config';
-import { intro2State } from './intro.state copy';
+import { introState } from './intro.state';
 import { time } from '@/index';
-import { colorShadow, transparent } from '@/game/game-colors';
+import { colorShadow, colorTransludid, transparent } from '@/game/game-colors';
 import { controls } from '@/core/controls';
+import { GameMapTheme } from '@/game/game-map';
 
 const buttonProps = { x: 0, y: 0, w: 600, h: 150 };
 
@@ -66,7 +67,7 @@ class PlayState extends BaseState {
     back.index = 0;
     back.name = 'back';
     back.clickAction = () => {
-      gameStateMachine.setState(menu2State);
+      gameStateMachine.setState(menuState);
     };
     this.menuButtons.push(back);
 
@@ -74,6 +75,8 @@ class PlayState extends BaseState {
     const play = new Button(buttonProps, 'PLAY');
     play.index = 1;
     play.clickAction = () => {
+
+      gameState.setTheme(GameConfig.levelTheme[GameConfig.levelCurrentIndex]);
       gameStateMachine.setState(gameState);
     };
     this.menuButtons.push(play);
@@ -99,32 +102,49 @@ class PlayState extends BaseState {
     super.onUpdate(dt);
 
     drawEngine.context.save();
-    intro2State.sceneAnimation(time);
+    introState.sceneAnimation(time);
     drawEngine.context.restore();
 
     const refY = drawEngine.canvasHeight * .3;
     let row = 0, rowHeight = 120;
 
+    drawEngine.drawRectangle( new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .25), new Vector(drawEngine.canvasWidth * .8, 700), {stroke: transparent, fill: colorTransludid} );
+
+
+    drawEngine.drawText(gameIcons.enemy + " Destroy "+ GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] +" enemies", 70, drawEngine.canvasWidth * .2, refY + rowHeight * row++, 'white', 'left');
+
     if (GameConfig.levelCurrentIndex == 0) {
-      drawEngine.drawRectangle( new Vector(drawEngine.canvasWidth * .1, drawEngine.canvasHeight * .25), new Vector(drawEngine.canvasWidth * .8, 700), {stroke: transparent, fill: colorShadow} );
-      drawEngine.drawText(`Flight briefing:`, 70, drawEngine.canvasWidth * .2, refY + rowHeight * row++, 'white', 'left');
+
+      row++;      
+
       [
         ...HINTS,
-      ].forEach((text , index) => {
-        drawEngine.drawText((1+index) +'. '+ text, 70, drawEngine.canvasWidth * .2, refY + rowHeight * row++, 'white', 'left');
+      ].forEach(text => {
+        drawEngine.drawText(text, 70, drawEngine.canvasWidth * .2, refY + rowHeight * row++, 'white', 'left');
       });
+      row +=2;
   
-    } else {
-      drawEngine.drawText(gameIcons.enemy + " destroy "+ GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] +" emenies", 70, drawEngine.canvasWidth * .2, refY + rowHeight * row++, 'white', 'left');
+    } else if (GameConfig.levelCurrentIndex == 1) {
+
+      [
+        'Collect:',
+        ' 🟡 Coins',
+        ' 🔵 Shields',
+        ' 🔴 Weapons',
+      ].forEach((text , index) => {
+        drawEngine.drawText(text, 70, drawEngine.canvasWidth * .25, refY + rowHeight * row++, 'white', 'left');
+      });
+      
+      row +=2;
 
     }
 
-    row++;
+    this.renderScoreBar();
 
     this.menuRender(refY + rowHeight * row);
 
     if (controls.isEscape) {
-      gameStateMachine.setState(menu2State);
+      gameStateMachine.setState(menuState);
     }
 
   }
@@ -189,15 +209,8 @@ class PlayState extends BaseState {
     }
 
     const xCenter = drawEngine.canvasWidth * .5;
-    const y = this.refY + this.offsetRefY + (index) * (this.menuOptionHeigth + this.menuOptionMarginHeigth);
 
-    // let info = this.goalOptions.filter(f => f.index == menu.index)[0];
-
-    // if (info) {
-    //   return new Vector(drawEngine.canvasWidth*info.coord[0], drawEngine.canvasHeight*info.coord[1]);
-    // }
-
-    return new Vector(xCenter, y);
+    return new Vector(xCenter, 1415);
   }
 
 }

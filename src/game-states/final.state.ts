@@ -4,7 +4,7 @@ import { drawEngine } from '@/core/draw-engine';
 import { Button } from '@/core/button';
 import { lerp } from '@/utils';
 import { GameConfig } from '../game/game-config';
-import { menu2State } from './menu.state copy';
+import { menuState } from './menu.state';
 
 
 class FinalState extends BaseState {
@@ -22,7 +22,7 @@ class FinalState extends BaseState {
 
     const back = new Button({ x: 0, y: 0, w: 600, h: 150 }, 'Continue');
     back.clickAction = () => {
-      gameStateMachine.setState(menu2State);
+      gameStateMachine.setState(menuState);
     };
     this.menuButtons.push(back);
 
@@ -44,7 +44,7 @@ class FinalState extends BaseState {
   lose() {
     this.result.title = `Defeated!`;
     this.result.icon = '❌';
-    this.result.color = 'red';
+    this.result.color = '#D1001F';
   }
 
 
@@ -83,7 +83,7 @@ class FinalState extends BaseState {
     drawEngine.drawText(this.result.title, 200, drawEngine.canvasWidth / 2, refY + rowHeight * row++, this.result.color, 'center');
     row+=2;
     // drawEngine.drawText(`Level ` + (GameConfig.levelCurrentIndex + 1), 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
-    drawEngine.drawText("Destroy "+ GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] +" enemies!" + this.result.icon, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
+    drawEngine.drawText("Destroy "+ GameConfig.levelEnemyCount[GameConfig.levelCurrentIndex] +" enemies " + this.result.icon, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
     drawEngine.drawText('Killed ' + this.result.kills, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
     drawEngine.drawText('Scored +' + this.result.score, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');
     // drawEngine.drawText(`Coins +135`, 60, drawEngine.canvasWidth / 2, refY + rowHeight * row++, 'white', 'center');

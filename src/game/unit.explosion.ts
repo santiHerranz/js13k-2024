@@ -1,9 +1,9 @@
 import { Vector } from "@/core/vector";
 import { Unit, UnitProperties } from "./unit";
-import { defaultExplosionTime, fireTime } from "./unit-fireball";
 import { globalAddParticle } from "./game-particle";
 import { rand } from "@/utils";
 import { globalParticleTime, globalParticles } from './game-particle';
+import { defaultExplosionTime, fireTime } from "./game-config";
 
 export class Explosion extends Unit {
 

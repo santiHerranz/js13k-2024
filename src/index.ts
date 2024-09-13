@@ -3,10 +3,11 @@ import { createGameStateMachine, gameStateMachine } from './game-state-machine';
 import { controls } from '@/core/controls';
 import { updateGlobalParticles } from "./game/game-particle";
 import { finalState } from './game-states/final.state';
-import { intro2State } from './game-states/intro.state copy';
-import { menu2State } from './game-states/menu.state copy';
+import { introState } from './game-states/intro.state';
+import { menuState as menuState } from './game-states/menu.state';
 import { gameState } from './game-states/game.state';
 import { playState } from './game-states/play.state';
+import { GameConfig } from './game/game-config';
 
 
 export let planeSprite: HTMLImageElement;
@@ -37,13 +38,14 @@ const runApp = async (image?: HTMLImageElement) => {
 
   planeSprite = image!;
 
-  createGameStateMachine(intro2State); // PROD
-  // createGameStateMachine(menu2State);
+  createGameStateMachine(introState); // PRODUCTION: Set introState Before Flight
+  // createGameStateMachine(menuState);
   // createGameStateMachine(playState);
-  // createGameStateMachine(gameState); 
+  //  createGameStateMachine(gameState); 
   // createGameStateMachine(repairState);
   // createGameStateMachine(finalState);
   // createGameStateMachine(touchState);
+
 
   (function gameLoop(currentTime: number) {
     const delta = (currentTime - previousTime); // milisegundos
@@ -103,5 +105,5 @@ const loadOneImage = async (url: string) => {
   });
 };
 
- loadOneImage(planeImgSource).then(runApp);
+loadOneImage(planeImgSource).then(runApp);
 // runApp();

@@ -15,7 +15,7 @@ export class Bullet extends Unit {
 
     color: string = '#fff';
 
-        constructor(props: { position: Vector; size: Vector; team: number; type: number; range: number; targetPosition: Vector;}) {
+        constructor(props: { position: Vector; size: Vector; team: number; range: number; targetPosition: Vector;}) {
 
 
         super(props, props.team);

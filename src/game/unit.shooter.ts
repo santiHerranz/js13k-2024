@@ -1,17 +1,15 @@
 import { Vector } from "@/core/vector";
 
-import { Timer } from "@/utils";
+import { PI, Timer } from "@/utils";
 import { Unit } from "./unit";
 import { drawEngine } from "@/core/draw-engine";
-import { TEAM_A, TEAM_B } from "@/game-states/game.state";
-import { BULLET_TYPE, BULLET_TYPE_BULLET } from "./game-weapons";
+import { TEAM_A } from "@/game-states/game.state";
 import { planeSprite, time } from "@/index";
 import { transparent } from "./game-colors";
 import { debug } from "./game-debug";
 
 export class Shooter extends Unit {
 
-    scorePoints = 10;
 
     planeImage = new Image();
     planeImageScale = 8;
@@ -19,9 +17,7 @@ export class Shooter extends Unit {
     shootCoolDownValue: number = 1;
     shootRangeMinimun: number = 0;
     shootCoolDownTimer: Timer = new Timer(undefined);
-    slowWhileInRange: boolean = true;
     shootRange: number = 100;
-    speedFactor: number = 1;
     maxSpeed: number = 10;
 
     targetPosition: Vector | undefined;
@@ -29,7 +25,6 @@ export class Shooter extends Unit {
     canDodge = false;
 
     bulletSpeed: number = 14;
-    weaponBulletType: BULLET_TYPE = BULLET_TYPE_BULLET;
 
     shotPhase = 0;
 
@@ -76,20 +71,6 @@ export class Shooter extends Unit {
             canShoot = distance < this.shootRange && distance > this.shootRangeMinimun;
         }
 
-        // FEATURE slow movement while target
-        // if (this.slowWhileInRange && canShoot) { // && this.attackCoolDownTimer.p100() < 100
-        //     this.Velocity.scale(.5)
-        //     this.Acceleration.scale(.5)
-        //     this.maxSpeed = this.Radius * this.speedFactor / 1000
-        // }
-        // else
-        //     this.maxSpeed = this.Radius * this.speedFactor / 100
-
-        // Enemy Jum
-        if (this.team == TEAM_B && this.canDodge) {
-            this._z = 150 + 50 * Math.cos(time * 2);
-        }
-
         super._update(dt);
 
         if (this.targetPosition && canShoot) {
@@ -100,19 +81,19 @@ export class Shooter extends Unit {
 
     draw(ctx: CanvasRenderingContext2D, dir: boolean = false) {
 
-        if (this.maxHealthPoints > 1000)
-            drawEngine.drawCircle(this.Position, this.Radius*1.5, {stroke: this.color, fill: 'cyan', lineWidth: 4}); 
-        
+        // if (this.maxHealthPoints > 1000)
+        drawEngine.drawCircle(this.Position, this.Radius * this.shieldRatio, { stroke: transparent, fill: '#00f', lineWidth: 4 });
+
 
         // hits
-        if (this.hits>0) {
+        if (this.hits > 0) {
             drawEngine.context.save();
-            
+
             // TODO
             /// change composite mode to use that shape
             // drawEngine.context.globalCompositeOperation = 'source-in';
 
-            drawEngine.drawCircle(this.Position, this.damageRange*1.2, {stroke: transparent, fill: 'rgb(255,255,255,.1)', lineWidth: 0});
+            drawEngine.drawCircle(this.Position, this.damageRange * 1.2, { stroke: transparent, fill: 'rgb(255,255,255,.1)', lineWidth: 0 });
 
         }
 
@@ -125,25 +106,33 @@ export class Shooter extends Unit {
         debug.showTargetWires && this.targetPosition && drawEngine.drawLine(this.Position, this.targetPosition, { stroke: `red` });
 
         if (this.team == TEAM_A) {
-             this.planeImageScale = 4 * this.Size.x * .8 + 4 * this.Size.x * .2 * Math.abs(Math.cos(time)); // 1; //
-             !debug.showWires && drawEngine.context.drawImage(this.planeImage, renderPosition.x - .5 * this.planeImageScale, renderPosition.y - .5 * this.planeImageScale, this.planeImageScale, this.planeImageScale);
-        // !debug.showWires && drawEngine.drawRectangle(renderPosition.clone().add(new Vector(-this.Size.x, -this.Size.y)), new Vector(this.Size.x * 2, this.Size.y * 2), { stroke: this.color, fill: this.color });
+            this.planeImageScale = 4 * this.Size.x * .8 + 4 * this.Size.x * .2 * Math.abs(Math.cos(time)); // 1; //
+            !debug.showWires && drawEngine.context.drawImage(this.planeImage, renderPosition.x - .5 * this.planeImageScale, renderPosition.y - .5 * this.planeImageScale, this.planeImageScale, this.planeImageScale);
+            // !debug.showWires && drawEngine.drawRectangle(renderPosition.clone().add(new Vector(-this.Size.x, -this.Size.y)), new Vector(this.Size.x * 2, this.Size.y * 2), { stroke: this.color, fill: this.color });
+        } else {
+            this.planeImageScale = 4 * this.Size.x * .8 + 4 * this.Size.x * .2 * Math.abs(Math.cos(time)); // 1; //
+            this.planeImageScale *= .8
+            drawEngine.context.save();
+            drawEngine.context.translate(renderPosition.x, renderPosition.y );
+            drawEngine.context.rotate(this.Velocity.heading() + PI / 2);
+            !debug.showWires && drawEngine.context.drawImage(this.planeImage, 0 - this.planeImageScale / 2, 0- this.planeImageScale / 2, this.planeImageScale, this.planeImageScale);
+            // drawEngine.drawCircle(new Vector(0, 0), this.Radius / 2, { stroke: transparent, fill: 'red', lineWidth: 0 });
+            drawEngine.context.restore();
         }
 
         if (this.team == TEAM_A) {
-            debug.showWires && drawEngine.drawCircle(renderPosition, this.Radius, { stroke: this.color, fill: transparent, lineWidth: 4 }); // this.Size.length()
+            // debug.showWires && drawEngine.drawCircle(renderPosition, this.Radius, { stroke: this.color, fill: transparent, lineWidth: 4 }); // this.Size.length()
         } else {
-            !debug.showWires && drawEngine.drawRectangle(renderPosition.clone().add(new Vector(-this.Size.x, -this.Size.y)), new Vector(this.Size.x * 2, this.Size.y * 2), { stroke: this.color, fill: this.color });
+            // !debug.showWires && drawEngine.drawRectangle(renderPosition.clone().add(new Vector(-this.Size.x, -this.Size.y)), new Vector(this.Size.x * 2, this.Size.y * 2), { stroke: this.color, fill: this.color });
 
             // HEALTH BAR
             const healthBarPosition = renderPosition; //.clone().add(new Vector(0, this.Size.y*.1));
             !debug.showWires && drawEngine.drawBar(healthBarPosition, this.Size, this.Size.y * 2, this.healthPoints, this.maxHealthPoints, '#0f0', this.healthPoints < this.maxHealthPoints * .8, 4);
             debug.showWires && drawEngine.drawText(this.healthPoints + "/" + this.maxHealthPoints, 30, healthBarPosition.x, healthBarPosition.y + this.Size.y * 2.4);
-
         }
 
 
-        drawEngine.drawLine(this.Position, this.Position.clone().add(this.moveForce().normalize().multiplyByScalar(this.Size.length())), { stroke: 'yellow' });
+        // drawEngine.drawLine(this.Position, this.Position.clone().add(this.moveForce().normalize().multiplyByScalar(this.Size.length())), { stroke: 'yellow' });
 
 
         let size = this.Radius * .8 + this.Radius * .2 * Math.abs(Math.cos(time)); //this.Radius;// + this.Radius * Math.abs(Math.sin(time));
@@ -162,7 +151,7 @@ export class Shooter extends Unit {
         // }
 
 
-        if (this.hits>0) {
+        if (this.hits > 0) {
             drawEngine.context.restore();
         }
 
