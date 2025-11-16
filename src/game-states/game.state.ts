@@ -324,7 +324,7 @@ class GameState extends BaseState {
     this.stats.killsGoal = this.enemyValueList.length; // * currentKillsGoalPercent;
 
     // Calculate final button position befor collectors
-    this.menuRender();
+    this.menuRender(undefined);
 
     let hw = drawEngine.canvasWidth / 2;
     let hh = drawEngine.canvasHeight / 2;
@@ -1007,7 +1007,7 @@ class GameState extends BaseState {
 
 
     // CURSOR 
-    drawEngine.drawCircle(inputMouse.pointer.Position, 60, { stroke: transparent, fill: colorShadow });
+    drawEngine.drawCircle(inputMouse.pointer.Position, { stroke: transparent, fill: colorShadow, size: 60 });
     // drawEngine.drawText(''+ inputMouse.pointer.identifier, 30, inputMouse.pointer.Position.x, inputMouse.pointer.Position.y - 200, 'white', 'center');
 
     // PARTICLES

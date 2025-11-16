@@ -112,7 +112,7 @@ export class GameObject implements Indexable {
         // debug.showWires && drawEngine.drawCircle(this.Position.clone().add(new Vector(0,-this._z)), this.Radius, {stroke: '#fff', fill: 'transparent', lineWidth: 2}); // this.Size.length()
         // debug.showVelocity && drawEngine.drawLine(this.Position, this.Position.clone().add(this.Velocity.clone().normalize().multiplyByScalar(this.Size.length())));
 
-        debug.showWires && drawEngine.drawCircle(this.HitBox.Position.add(new Vector(this.HitBox.Size.x/2, this.HitBox.Size.y/2)), this.HitBox.Size.x/2, {stroke: 'red', fill: transparent});
+        debug.showWires && drawEngine.drawCircle(this.HitBox.Position.add(new Vector(this.HitBox.Size.x/2, this.HitBox.Size.y/2)), {stroke: 'red', fill: transparent, size: this.HitBox.Size.x/2});
         debug.showWires && drawEngine.drawRectangle(this.HitBox.Position, this.HitBox.Size, {stroke: 'red', fill: transparent});
     }
 

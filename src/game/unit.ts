@@ -143,7 +143,7 @@ export class Unit extends GameObject {
         debug.showMoveWires && this.movePosition && drawEngine.drawLine(this.Position, this.movePosition, { stroke: 'green'});
 
         // units shadow
-        this.showShadow && drawEngine.drawCircle(this.Position, this.damageRange, {stroke: colorShadow, fill: colorShadow, lineWidth: 2}); // this.Size.length()
+        this.showShadow && drawEngine.drawCircle(this.Position, {stroke: colorShadow, fill: colorShadow, lineWidth: 2, size: this.damageRange}); // this.Size.length()
 
     }
 

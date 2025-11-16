@@ -36,7 +36,7 @@ export class Bomb extends Shooter {
 
         // Código específico para representar una gema gráficamente
         // drawEngine.drawCircle(this.Position, this.Radius*1.2 + this.Radius *.2 * Math.cos(time*4), {stroke: this.color, fill: 'red', lineWidth: 16});
-        drawEngine.drawCircle(this.Position, this.Radius*.8, {stroke: this.color, fill: this.color, lineWidth: 8});
+        drawEngine.drawCircle(this.Position, {stroke: this.color, fill: this.color, lineWidth: 8, size: this.Radius*.8});
         drawEngine.drawText(''+ this.number, this.Size.length(), this.Position.x, this.Position.y);
 
     }

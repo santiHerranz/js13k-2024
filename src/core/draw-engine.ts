@@ -41,9 +41,10 @@ class DrawEngine {
   }
 
   
-  drawCircle(position: Vector, size: number = 10, options? : { stroke?: string, fill?: string; lineWidth? : number; }) {
+  drawCircle(position: Vector, options? : { stroke?: string, fill?: string; lineWidth? : number; size?: number; }) {
+    const size = options?.size ?? 10;
     if (options == undefined)
-      options = { stroke: '#fff', lineWidth : 3 };
+      options = { stroke: '#fff', lineWidth : 3, size: size };
     if (options.fill == undefined) 
         options.fill = 'transparent';
 
@@ -53,9 +54,9 @@ class DrawEngine {
     ctx.arc(position.x, position.y, size, 0, 2* Math.PI);
     ctx.closePath();
 
-    ctx.lineWidth = options.lineWidth!;
+    ctx.lineWidth = options.lineWidth ?? 3;
     ctx.fillStyle = options.fill!;
-    ctx.strokeStyle = options.stroke!;
+    ctx.strokeStyle = options.stroke ?? '#fff';
     ctx.stroke();
     ctx.fill();
 

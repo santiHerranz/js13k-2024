@@ -9,7 +9,7 @@ export class GameTile {
     _tileType: number;
     height: number;
 
-    constructor(isox: number, isoy: number, height = 0, tileType: number, tileSize: Vector) {
+    constructor(isox: number, isoy: number, tileType: number, tileSize: Vector, height = 0) {
 
         this._tileSize = tileSize;
 

@@ -96,7 +96,7 @@ export class BaseState implements State {
 
     this.onBackground();
 
-    this.menuRender();
+    this.menuRender(undefined);
 
     // drawEngine.drawText('Start Game', 60, xCenter, 600, this.isStartSelected ? 'white' : 'gray');
     // drawEngine.drawText('Toggle Fullscreen', 60, xCenter, 700, this.isStartSelected ? 'gray' : 'white');

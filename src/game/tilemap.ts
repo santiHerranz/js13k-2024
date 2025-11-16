@@ -42,7 +42,7 @@ class TileMap {
           tileType = 4; // grass
         }
 
-        tile = new GameTile(j, i, TILE_HEIGHT, tileType, this._tileSize); // height 20
+        tile = new GameTile(j, i, tileType, this._tileSize, TILE_HEIGHT); // height 20
 
         //TODO this._addChild(tile);
         tileMapRow.push(tile);

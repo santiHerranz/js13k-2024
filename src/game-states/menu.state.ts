@@ -113,7 +113,7 @@ class MenuState extends BaseState {
     // drawEngine.drawText('Levels ' + this.selectedMenuIndex +' de ' + (this.menuButtons.length-1) , 60, drawEngine.canvasWidth*.5, 200, 'white');
     drawEngine.drawText('Zone' , 70, drawEngine.canvasWidth *.5, 220);
 
-    this.menuRender();
+    this.menuRender(undefined);
 
     if (controls.isEscape) {
       gameStateMachine.setState(introState);

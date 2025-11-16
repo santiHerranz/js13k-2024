@@ -56,7 +56,7 @@ export class Button {
   selected: boolean = false;
 
 
-  clickAction: Function;
+  clickAction: (button?: Button) => void;
 
   hoverEvent: () => void;
   // hoverOutEvent: () => void;

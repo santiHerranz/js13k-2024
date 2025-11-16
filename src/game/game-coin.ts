@@ -67,8 +67,8 @@ export class Coin extends Unit {
         const renderPosition = this.Position;//.clone().add(new Vector(0, this._z));
 
         if (!debug.showWires && this.showBall) {
-            drawEngine.drawCircle(renderPosition, this.Radius, { stroke: 'orange', fill: 'orange', lineWidth: 4 });
-            drawEngine.drawCircle(renderPosition, this.Radius *.9, { stroke: this.color, fill: this.color, lineWidth: 0 });
+            drawEngine.drawCircle(renderPosition, { stroke: 'orange', fill: 'orange', lineWidth: 4, size: this.Radius });
+            drawEngine.drawCircle(renderPosition, { stroke: this.color, fill: this.color, lineWidth: 0, size: this.Radius *.9 });
         }
 
 

@@ -82,7 +82,7 @@ export class Shooter extends Unit {
     draw(ctx: CanvasRenderingContext2D, dir: boolean = false) {
 
         // if (this.maxHealthPoints > 1000)
-        drawEngine.drawCircle(this.Position, this.Radius * this.shieldRatio, { stroke: transparent, fill: '#00f', lineWidth: 4 });
+        drawEngine.drawCircle(this.Position, { stroke: transparent, fill: '#00f', lineWidth: 4, size: this.Radius * this.shieldRatio });
 
 
         // hits
@@ -93,7 +93,7 @@ export class Shooter extends Unit {
             /// change composite mode to use that shape
             // drawEngine.context.globalCompositeOperation = 'source-in';
 
-            drawEngine.drawCircle(this.Position, this.damageRange * 1.2, { stroke: transparent, fill: 'rgb(255,255,255,.1)', lineWidth: 0 });
+            drawEngine.drawCircle(this.Position, { stroke: transparent, fill: 'rgb(255,255,255,.1)', lineWidth: 0, size: this.damageRange * 1.2 });
 
         }
 
