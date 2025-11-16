@@ -302,6 +302,11 @@ class GameState extends BaseState {
     this.enemyValueList = [];
     this.labels = [];
 
+    // Reset cached arrays and draw objects
+    this.cachedDrawObjects = [];
+    this.drawObjectsDirty = true;
+    this.updateCachedArrays();
+
     // reset level score
     this.levelScore = 0;
 
@@ -341,6 +346,10 @@ class GameState extends BaseState {
 
     const startPosition = new Vector(hw, hh + hh * .6);
     this.player = this.createPlayer(startPosition);
+
+    // Update cached arrays after creating player
+    this.updateCachedArrays();
+    this.drawObjectsDirty = true;
 
     this.playerChangeWeapon(this.getWeapon(GameConfig.levelCurrentIndex));
 
