@@ -26,10 +26,12 @@ class Controls {
   isConfirm = false;
   isEscape = false;
   DeleteKey = false;
+  weaponCheat: number | null = null; // Cheat for weapon selection (1-9)
+  unlockAllLevels: boolean = false; // Cheat to unlock all levels
   inputDirection: DOMPoint;
 
   keyMap: Map<string, boolean> = new Map();
-  previousState = { isSpace: this.isSpace, isUp: this.isUp, isDown: this.isDown, isConfirm: this.isConfirm, isEscape: this.isEscape, DeleteKey: this.DeleteKey };
+  previousState = { isSpace: this.isSpace, isUp: this.isUp, isDown: this.isDown, isConfirm: this.isConfirm, isEscape: this.isEscape, DeleteKey: this.DeleteKey, unlockAllLevels: this.unlockAllLevels };
 
   constructor() {
     document.addEventListener('keydown', event => this.toggleKey(event, true));
@@ -42,6 +44,7 @@ class Controls {
     this.previousState.isDown = this.isDown;
     this.previousState.isConfirm = this.isConfirm;
     this.previousState.isEscape = this.isEscape;
+    this.previousState.unlockAllLevels = this.unlockAllLevels;
     const gamepad = navigator.getGamepads()[0];
     const isButtonPressed = (button: XboxControllerButton) => gamepad?.buttons[button].pressed;
 
@@ -67,6 +70,18 @@ class Controls {
 
     this.isSpace = Boolean(this.keyMap.get('Space'));
     this.DeleteKey = Boolean(this.keyMap.get('Delete'));
+    
+    // Weapon cheat keys (1-9)
+    this.weaponCheat = null;
+    for (let i = 1; i <= 9; i++) {
+      if (this.keyMap.get(`Digit${i}`) || this.keyMap.get(`Numpad${i}`)) {
+        this.weaponCheat = i;
+        break;
+      }
+    }
+    
+    // Unlock all levels cheat (press 'U' key)
+    this.unlockAllLevels = Boolean(this.keyMap.get('KeyU'));
   }
 
   private toggleKey(event: KeyboardEvent, isPressed: boolean) {

@@ -92,6 +92,18 @@ class MenuState extends BaseState {
 
     super.onUpdate(dt);
 
+    // Unlock all levels cheat (press 'U' key)
+    if (controls.unlockAllLevels && !controls.previousState.unlockAllLevels) {
+      // Unlock all levels (0 to 12)
+      GameConfig.levelIndexUnlocked = Array.from({ length: GameConfig.levelEnemyCount.length }, (_, i) => i);
+      // Enable all level buttons
+      this.menuButtons.forEach((btn) => {
+        if (btn.index < GameConfig.levelEnemyCount.length) {
+          btn.enabled = true;
+        }
+      });
+    }
+
     drawEngine.context.save();
     introState.sceneAnimation(time);
     drawEngine.context.restore();

@@ -430,6 +430,29 @@ class GameState extends BaseState {
 
     super.onUpdate(dt);
 
+    // Weapon cheat: Press 1-9 to change weapon (from weakest to strongest)
+    // Weapons ordered by power (considering bullets count, cooldown, and spread):
+    // 1 = weakest (single slow), 9 = strongest (seven180 or triple fast)
+    if (controls.weaponCheat !== null) {
+      const weaponIndex = controls.weaponCheat - 1; // Convert 1-9 to 0-8
+      // Map to weapon patterns ordered by power (weakest to strongest):
+      // 0: single straight slow (1 bullet, cooldown .15) - weakest
+      // 1: single straight fast (1 bullet, cooldown .05)
+      // 2: double straight slow (2 bullets, cooldown .1)
+      // 3: double straight fast (2 bullets, cooldown .01)
+      // 4: triple straight slow (3 bullets, cooldown .1)
+      // 5: triple straight fast (3 bullets, cooldown .01)
+      // 6: triple angled fast (3 bullets angled, cooldown .01)
+      // 7: triple angled open fast (3 bullets wide spread, cooldown .01)
+      // 8: seven180 (7 bullets 180°, cooldown .008) - strongest
+      const weaponPatterns = [0, 1, 2, 3, 4, 5, 6, 7, 11];
+      if (weaponIndex < weaponPatterns.length) {
+        this.playerChangeWeapon(weaponPatterns[weaponIndex]);
+        // Reset cheat to prevent continuous triggering
+        controls.weaponCheat = null;
+      }
+    }
+
     if (this.winCondition && !this.winConditionCriteria()) {
       this.winCondition = false;
       this.autopilot = false;
