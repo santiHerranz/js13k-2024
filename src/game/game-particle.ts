@@ -16,6 +16,7 @@ export class Particle {
   alpha: number;
   time: any;
   initTime: any;
+  active: boolean = true;
 
   constructor(x: any, y: any, r: any, dx: any, dy: any, color: string, t: any) {
 
@@ -28,13 +29,15 @@ export class Particle {
     this.alpha = 1;
     this.time = t;
     this.initTime = t;
+    this.active = true;
 
     if (this.color == '')
       this.color = '#fff';
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    // console.log('particle draw')
+    if (!this.active) return;
+    
     let tmp = ctx.globalAlpha;
 
     ctx.globalAlpha = this.alpha;
@@ -55,6 +58,26 @@ export class Particle {
     this.time--;
     this.alpha -= 1 / this.initTime;
     this.radius *= 0.98;
+    
+    if (this.time < 0) {
+      this.active = false;
+    }
+  }
+
+  reset(x: any, y: any, r: any, dx: any, dy: any, color: string, t: any) {
+    this.x = x;
+    this.y = y;
+    this.radius = r;
+    this.dx = dx;
+    this.dy = dy;
+    this.color = color;
+    this.alpha = 1;
+    this.time = t;
+    this.initTime = t;
+    this.active = true;
+
+    if (this.color == '')
+      this.color = '#fff';
   }
 }
 
@@ -85,12 +108,22 @@ export function globalAddParticle(pos: Vector, radius: number, color: string, dx
 
 
 export function updateGlobalParticles() {
-  for (var p = globalParticles.length - 1; p > -1; p--) {
-    var tempPar: Particle = globalParticles[p];
-    tempPar.update();
-    if (tempPar.time < 0) {
-      globalParticles.splice(p, 1);
+  // Optimized: use active flag instead of splice to avoid array reindexing
+  let writeIndex = 0;
+  for (let p = 0; p < globalParticles.length; p++) {
+    const tempPar = globalParticles[p];
+    if (tempPar.active) {
+      tempPar.update();
+      if (tempPar.active) {
+        // Only keep active particles, compact array
+        if (writeIndex !== p) {
+          globalParticles[writeIndex] = tempPar;
+        }
+        writeIndex++;
+      }
     }
   }
+  // Remove inactive particles from end
+  globalParticles.length = writeIndex;
 }
 

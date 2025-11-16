@@ -4,9 +4,10 @@ import { Vector } from "./vector";
 class DrawEngine {
 
   context: CanvasRenderingContext2D;
+  private cachedFont: string = '';
 
   constructor() {
-    this.context = c2d.getContext('2d');
+    this.context = c2d.getContext('2d', { willReadFrequently: false });
   }
 
   get canvasWidth() {
@@ -19,14 +20,22 @@ class DrawEngine {
 
   drawText(text: string, fontSize: number, x: number, y: number, color = 'white', textAlign: 'center' | 'left' | 'right' = 'center') {
     const context = this.context;
+    const font = `bold ${fontSize}px Impact, sans-serif-black`;
 
-    context.font = `bold ${fontSize}px Impact, sans-serif-black`;
+    // Only cache font property as it's the most expensive and least likely to cause issues
+    if (this.cachedFont !== font) {
+      context.font = font;
+      this.cachedFont = font;
+    }
+    
+    // Always set these properties to ensure correct state
     context.textAlign = textAlign;
     context.strokeStyle = 'black';
     context.lineWidth = 8;
     context.miterLimit = 4;
     context.textBaseline = 'middle';
     context.fillStyle = color;
+    
     context.strokeText(text, x, y);
     context.fillText(text, x, y);
   }

@@ -113,6 +113,18 @@ class GameState extends BaseState {
   shieldButton: Button | undefined;
   weaponButton: Button | undefined;
 
+  // Cached arrays for performance optimization
+  private cachedEnemies: Shooter[] = [];
+  private cachedPlayerUnits: Shooter[] = [];
+  private cachedTeamABullets: Bullet[] = [];
+  private cachedTeamBBullets: Bullet[] = [];
+  private cachedNonBombUnits: Shooter[] = [];
+  private cachedBombUnits: Shooter[] = [];
+  private cachedTouchedCoins: Coin[] = [];
+  private cachedDrawObjects: GameObject[] = [];
+  private drawObjectsDirty: boolean = true;
+  private cacheFrame: number = 0;
+
   constructor() {
     super();
 
@@ -144,11 +156,11 @@ class GameState extends BaseState {
       let last = new Vector(inputMouse.lastX, inputMouse.lastY);
       let deltaMove = new Vector((start.x - last.x), (start.y - last.y));
 
-      this.units.filter(f => f.team == TEAM_A).map(player => {
-        player.Position.add(deltaMove.clone().scale(-1));
-        this.playerPositionAreaConstraint(player);
-
-      });
+        for (let i = 0; i < this.cachedPlayerUnits.length; i++) {
+          const player = this.cachedPlayerUnits[i];
+          player.Position.add(deltaMove.clone().scale(-1));
+          this.playerPositionAreaConstraint(player);
+        }
 
     }
   }
@@ -159,20 +171,33 @@ class GameState extends BaseState {
       let last = new Vector(inputMouse.lastX, inputMouse.lastY);
       let deltaMove = new Vector((start.x - last.x), (start.y - last.y));
 
-      this.units.filter(f => f.team == TEAM_A).map(player => {
+      for (let i = 0; i < this.cachedPlayerUnits.length; i++) {
+        const player = this.cachedPlayerUnits[i];
         player.Position.add(deltaMove.clone().scale(-1));
         this.playerPositionAreaConstraint(player);
-      });
+      }
     }
   }
 
 
   private getEnemies() {
-    return this.units.filter(f => f.team == TEAM_B);
+    return this.cachedEnemies;
   }
 
   private getTeamBullets(team: TEAM) {
-    return this.bullets.filter(f => f.team == team);
+    return team === TEAM_A ? this.cachedTeamABullets : this.cachedTeamBBullets;
+  }
+
+  // Update cached arrays - call this when arrays change
+  private updateCachedArrays() {
+    this.cachedEnemies = this.units.filter(f => f.team == TEAM_B);
+    this.cachedPlayerUnits = this.units.filter(f => f.team == TEAM_A);
+    this.cachedTeamABullets = this.bullets.filter(f => f.team == TEAM_A);
+    this.cachedTeamBBullets = this.bullets.filter(f => f.team == TEAM_B);
+    this.cachedNonBombUnits = this.units.filter(f => f.type != 'bomb');
+    this.cachedBombUnits = this.units.filter(f => f.type == 'bomb');
+    this.cachedTouchedCoins = this.coins.filter(f => f.type == COIN_TOUCHED);
+    this.drawObjectsDirty = true;
   }
 
   onEnter() {
@@ -455,7 +480,7 @@ class GameState extends BaseState {
     drawEngine.preShake(this.shakeForce);
 
 
-    this.playerAlive = this.units.filter(f => f.team == TEAM_A).length > 0;
+    this.playerAlive = this.cachedPlayerUnits.length > 0;
 
     // Units explode at the end of life
     this.units
@@ -496,6 +521,9 @@ class GameState extends BaseState {
     this.coins = this.coins.filter(f => f.Active && f.Position.y < drawEngine.canvasHeight);
     this.explosions = this.explosions.filter(f => f.Active && f.Position.y < drawEngine.canvasHeight);
     this.bullets = this.bullets.filter(f => f.Active && f.Position.y > 0 && f.Position.y < drawEngine.canvasHeight);
+    
+    // Update cached arrays after filtering
+    this.updateCachedArrays();
 
 
     // DRAW BACKGROUND MOVING
@@ -525,6 +553,9 @@ class GameState extends BaseState {
 
         this.units.push(enemy);
       });
+      
+      // Mark cache as dirty when adding new units
+      this.updateCachedArrays();
 
 
       // if (this.getEnemies().length > 500)
@@ -544,24 +575,20 @@ class GameState extends BaseState {
     ///////////////
     // DAMAGE MANAGER BEFORE PHYSICS COLLISION
 
-    // Unit vs Unit: Damage both units
-    this.units
-      .forEach((unitA: Unit) => {
-
-        this.units
-          .filter(f => f.team == TEAM_B && unitA.team == TEAM_A || f.team == TEAM_A && unitA.team == TEAM_B)
-          .forEach((unitB: Unit) => {
-
-            var isInRange = this.checkRange(unitA, unitB, unitA.damageRange);
-            if (isInRange.a) {
-              // debug.damageMessages && console.log(`unit to unit damage: ${unitB.damagePoints} / ${unitA.damagePoints}`);
-              // !debug.godMode && 
-              unitA.applyDamage(unitB.damagePoints);
-              unitB.applyDamage(unitA.damagePoints);
-            }
-
-          });
-      });
+    // Unit vs Unit: Damage both units - optimized with cached arrays
+    for (let i = 0; i < this.units.length; i++) {
+      const unitA = this.units[i];
+      const targetUnits = unitA.team === TEAM_A ? this.cachedEnemies : this.cachedPlayerUnits;
+      
+      for (let j = 0; j < targetUnits.length; j++) {
+        const unitB = targetUnits[j];
+        const isInRange = this.checkRange(unitA, unitB, unitA.damageRange);
+        if (isInRange.a) {
+          unitA.applyDamage(unitB.damagePoints);
+          unitB.applyDamage(unitA.damagePoints);
+        }
+      }
+    }
 
     // Explosion vs units
     this.explosions
@@ -584,94 +611,83 @@ class GameState extends BaseState {
           });
       });
 
-    // Bullet vs Unit: Damage Unit and bullet destroy
-    this.bullets
-      .forEach((bullet: Bullet) => {
-
-        this.units
-          .filter(unit => unit.team == TEAM_B && bullet.team == TEAM_A || unit.team == TEAM_A && bullet.team == TEAM_B)
-          .forEach((unit: Unit) => {
-
-            var isInRange = this.checkRange(bullet, unit, bullet.damageRange);
-            if (isInRange.a) {
-
-              // if (!(debug.godMode && unit.team == TEAM_A)) {
-              // debug.damageMessages && console.log(`bullet to unit damage: ${bullet.damagePoints}`);
-              unit.applyDamage(bullet.damagePoints);
-              // }
-              bullet.destroy();
-            }
-
-          });
-      });
+    // Bullet vs Unit: Damage Unit and bullet destroy - optimized with cached arrays
+    for (let i = 0; i < this.bullets.length; i++) {
+      const bullet = this.bullets[i];
+      if (!bullet.Active) continue;
+      
+      const targetUnits = bullet.team === TEAM_A ? this.cachedEnemies : this.cachedPlayerUnits;
+      
+      for (let j = 0; j < targetUnits.length; j++) {
+        const unit = targetUnits[j];
+        const isInRange = this.checkRange(bullet, unit, bullet.damageRange);
+        if (isInRange.a) {
+          unit.applyDamage(bullet.damagePoints);
+          bullet.destroy();
+          break; // Bullet destroyed, exit inner loop
+        }
+      }
+    }
 
 
     ///////////////
-    // PHYSICS COLLISION MANAGER
+    // PHYSICS COLLISION MANAGER - optimized with cached arrays
 
     const useCases = [
       // Enemy bullets vs Player
-      [...this.getTeamBullets(TEAM_B), ...this.units.filter(f => f.team == TEAM_A)],
-      // Player bullets vs Enemies
-      // [...this.getTeamBullets(TEAM_A), ...this.getEnemies()],
+      [...this.cachedTeamBBullets, ...this.cachedPlayerUnits],
       // All units except bombs
-      [...this.units.filter(f => f.type != 'bomb')],
+      this.cachedNonBombUnits,
       // Bombs vs Player
-      [...this.units.filter(f => f.type == 'bomb'), ...this.units.filter(f => f.team == TEAM_A)],
-      // Coins vs coins
-      [...this.coins.filter(f => f.type != COIN_TOUCHED)],
+      [...this.cachedBombUnits, ...this.cachedPlayerUnits],
+      // Coins vs coins (non-touched)
+      this.coins.filter(f => f.type != COIN_TOUCHED),
     ];
 
-    useCases.forEach((useCase) => {
+    for (let i = 0; i < useCases.length; i++) {
+      const useCase = useCases[i];
+      if (useCase.length === 0) continue;
+      
       this.collisionTree.clear();
-      useCase
-        .forEach(item => {
-          this.collisionTree.insert(item);
-        });
+      for (let j = 0; j < useCase.length; j++) {
+        this.collisionTree.insert(useCase[j]);
+      }
       manageUnitCollision(useCase, dt);
-
-      // DRAW QUADTREE
-      // debug.showQuadtree && drawEngine.drawQuadtree(this.collisionTree, drawEngine.context);
-
-    });
+    }
 
 
     ///////////////
     // COLLISION EVENTS
 
-    // Touched coins => Collected coins
-    this.collectors
-      .forEach(collector => {
+    // Touched coins => Collected coins - optimized with cached array
+    for (let i = 0; i < this.collectors.length; i++) {
+      const collector = this.collectors[i];
+      for (let j = 0; j < this.cachedTouchedCoins.length; j++) {
+        const coin = this.cachedTouchedCoins[j];
+        if (!coin.Active) continue;
+        
+        const collision = this.checkRange(collector, coin, collector.Radius);
+        if (collision.a) {
+          this.onCoinCollected(collector, coin);
+          break; // Found collision, exit inner loop
+        }
+      }
+    }
 
-        this.coins
-          .filter(f => f.type == COIN_TOUCHED)
-          .some((coin: Coin) => {
-
-            var collision = this.checkRange(collector, coin, collector.Radius);
-            if (collision.a) {
-              this.onCoinCollected(collector, coin);
-              return true;
-            }
-          });
-      });
-
-    // Coin yellow => Touched coins
-    this.coins
-      // .filter(f => f.type == COIN_YELLOW)
-      .forEach((coin: Coin) => {
-
-        this.units
-          .filter(f => f.team == TEAM_A)
-          .some((unit: Unit) => {
-
-            var collision = this.checkRange(unit, coin, unit.Radius);
-            if (collision.a) {
-              this.onCoinTouched(coin);
-              return true;
-            }
-
-          });
-      });
+    // Coin yellow => Touched coins - optimized with cached array
+    for (let i = 0; i < this.coins.length; i++) {
+      const coin = this.coins[i];
+      if (!coin.Active) continue;
+      
+      for (let j = 0; j < this.cachedPlayerUnits.length; j++) {
+        const unit = this.cachedPlayerUnits[j];
+        const collision = this.checkRange(unit, coin, unit.Radius);
+        if (collision.a) {
+          this.onCoinTouched(coin);
+          break; // Found collision, exit inner loop
+        }
+      }
+    }
 
 
     // Shoot
@@ -785,30 +801,61 @@ class GameState extends BaseState {
     });
 
     /////////////
-    // UPDATE OBJECTS
-
-    [...this.units, ...this.bullets, ...this.coins, ...this.explosions, ...this.collectors]
-      .forEach((item: any) => {
-        item.hits = Math.max(0, --item.hits);
-        item._update(dt);
-
-
-      });
-
+    // UPDATE OBJECTS - optimized with single loop
+    
+    // Update all objects in single pass
+    for (let i = 0; i < this.units.length; i++) {
+      const item = this.units[i];
+      item.hits = Math.max(0, --item.hits);
+      item._update(dt);
+    }
+    for (let i = 0; i < this.bullets.length; i++) {
+      const item = this.bullets[i];
+      item.hits = Math.max(0, --item.hits);
+      item._update(dt);
+    }
+    for (let i = 0; i < this.coins.length; i++) {
+      const item = this.coins[i];
+      item.hits = Math.max(0, --item.hits);
+      item._update(dt);
+    }
+    for (let i = 0; i < this.explosions.length; i++) {
+      const item = this.explosions[i];
+      item.hits = Math.max(0, --item.hits);
+      item._update(dt);
+    }
+    for (let i = 0; i < this.collectors.length; i++) {
+      const item = this.collectors[i];
+      item.hits = Math.max(0, --item.hits);
+      item._update(dt);
+    }
 
     /////////////
-    // DRAW OBJECTS
+    // DRAW OBJECTS - optimized with cached array and reduced sorting
 
-    [...this.units,
-    ...this.bullets,
-    ...this.coins,
-    ...this.explosions,
-    ...this.collectors,
-    ]
-      .sort((a: GameObject, b: GameObject) => { return -((b.Position.y + b._z) * 10000 + b.Position.x) + ((a.Position.y + a._z) * 10000 + a.Position.x); })
-      .forEach((item: GameObject) => {
-        item.draw(drawEngine.context);
+    if (this.drawObjectsDirty || this.cachedDrawObjects.length === 0) {
+      // Rebuild draw array only when needed
+      this.cachedDrawObjects.length = 0;
+      this.cachedDrawObjects.push(...this.units);
+      this.cachedDrawObjects.push(...this.bullets);
+      this.cachedDrawObjects.push(...this.coins);
+      this.cachedDrawObjects.push(...this.explosions);
+      this.cachedDrawObjects.push(...this.collectors);
+      
+      // Sort by depth (y position + z offset)
+      this.cachedDrawObjects.sort((a: GameObject, b: GameObject) => {
+        const aDepth = (a.Position.y + a._z) * 10000 + a.Position.x;
+        const bDepth = (b.Position.y + b._z) * 10000 + b.Position.x;
+        return aDepth - bDepth;
       });
+      
+      this.drawObjectsDirty = false;
+    }
+    
+    // Draw all objects
+    for (let i = 0; i < this.cachedDrawObjects.length; i++) {
+      this.cachedDrawObjects[i].draw(drawEngine.context);
+    }
 
 
     drawEngine.postShake();
@@ -1060,6 +1107,7 @@ class GameState extends BaseState {
         coin.showNumber = true;
         coin.Size = size;
         this.coins.push(coin);
+        this.drawObjectsDirty = true;
       }, 100);
 
     } else if (GameConfig.levelCurrentIndex > 0 && rand() > .7) {
@@ -1069,6 +1117,7 @@ class GameState extends BaseState {
         coin.showNumber = false;
         coin.Size = size.scale(.7);
         this.coins.push(coin);
+        this.drawObjectsDirty = true;
       }, 100);
     }
 
@@ -1127,7 +1176,8 @@ class GameState extends BaseState {
     // Send to coin collector
     rewardCoin.follow = this.collectorCoin;
 
-    this.coins.push(rewardCoin);
+      this.coins.push(rewardCoin);
+      this.drawObjectsDirty = true;
 
     coin.destroy();
 
@@ -1152,6 +1202,7 @@ class GameState extends BaseState {
       explosion.fillColor = 'rgb(0,0,0,.5)';
       explosion.Mass = 1000;
       this.explosions.push(explosion);
+      this.drawObjectsDirty = true;
 
       this.shakeForce = GameConfig.bombShake;
       bomb.destroy();
@@ -1214,6 +1265,8 @@ class GameState extends BaseState {
       bomb.movePosition = bomb.path[bomb.currentPoint];
 
       this.units.push(bomb);
+      this.drawObjectsDirty = true;
+      this.updateCachedArrays();
 
       collector.number = 0;
       coin.number = 0;
@@ -1311,9 +1364,11 @@ class GameState extends BaseState {
         explosion.damagePoints = GameConfig.enemyBulletExplosionDamagePoints;
 
         this.explosions.push(explosion);
+      this.drawObjectsDirty = true;
 
       };
       this.bullets.push(enemyBullet);
+      this.drawObjectsDirty = true;
 
 
       // if (this.units.length < 10)
@@ -1326,6 +1381,7 @@ class GameState extends BaseState {
       explosion.Mass = 100;
       explosion.color = enemy.color;
       this.explosions.push(explosion);
+      this.drawObjectsDirty = true;
 
       this.shakeForce = 3;
       sound(SND_DEATH);
@@ -1398,6 +1454,7 @@ class GameState extends BaseState {
 
 
           this.bullets.push(playerBullet);
+          this.drawObjectsDirty = true;
 
           // if (this.units.length < 10)
           if (this.shootSoundColdDownTimer.elapsed()) {
@@ -1413,6 +1470,7 @@ class GameState extends BaseState {
           // Avoid self damage to test player explosions
           explosion.damagePoints = 0;
           this.explosions.push(explosion);
+      this.drawObjectsDirty = true;
 
           this.shakeForce = 50;
           sound(SND_BIG_EXPLOSION);
@@ -1420,7 +1478,7 @@ class GameState extends BaseState {
 
 
         // obj.targetPosition = unitPosition.clone().add(new Vector(rand(0, size.length()) * 5, rand(0, size.length() * 5)));
-        if (this.units.filter(f => f.team == TEAM_A).length > 0)
+        if (this.cachedPlayerUnits.length > 0)
           player.Visible = false;
         this.units.push(player);
       });

@@ -49,6 +49,7 @@ const runApp = async (image?: HTMLImageElement) => {
 
   (function gameLoop(currentTime: number) {
     const delta = (currentTime - previousTime); // milisegundos
+    time += delta / 1000;
 
     if (delta >= interval) {
       // previousTime = currentTime - (delta % interval) / 2; // Slow time
@@ -67,8 +68,8 @@ const runApp = async (image?: HTMLImageElement) => {
 
       updateGlobalParticles();
     }
+    
     requestAnimationFrame(gameLoop);
-    time += delta / 1000;
   })(0);
 
 };
