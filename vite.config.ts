@@ -165,8 +165,10 @@ async function embedJs(html: string, chunk: OutputChunk): Promise<string> {
   }
 
   const packer = new Packer(inputs, options);
+  const distDir = path.join(__dirname, 'dist');
+  await fs.mkdir(distDir, { recursive: true });
   await Promise.all([
-    fs.writeFile(`${path.join(__dirname, 'dist')}/output.js`, htmlInJs),
+    fs.writeFile(`${distDir}/output.js`, htmlInJs),
     packer.optimize(process.env.LEVEL_2_BUILD ? 2 : 0) // Regular builds use level 2, but rr config builds use the supplied params
   ]);
   const { firstLine, secondLine } = packer.makeDecoder();
